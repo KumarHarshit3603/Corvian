@@ -8,4 +8,12 @@ model User {
   createdAt TimestamptzString @default(now())
   password  String
 }
+// model Order {
+//   orderid   Int @id
+//   symbol    String
+//   side      String
+//   type      String
+//   price     String
+//   quantity  String
+// }
 
