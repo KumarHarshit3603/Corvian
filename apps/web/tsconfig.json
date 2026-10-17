@@ -6,7 +6,16 @@
         "name": "next"
       }
     ],
-    "strictNullChecks": true
+    "paths": {
+      "@/*" : ["./*"]
+    },
+    "strictNullChecks": true,
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "types": [
+      "node"
+    ]
   },
   "include": [
     "**/*.ts",
