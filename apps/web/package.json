@@ -12,6 +12,7 @@
     "contract:emit": "prisma contract emit"
   },
   "dependencies": {
+    "@corvian/common": "*",
     "@prisma/orm-postgres": "^8.0.0-rc.18",
     "@repo/ui": "*",
     "axios": "^1.20.0",
@@ -20,6 +21,7 @@
     "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "redis": "^6.3.0",
     "tsx": "^4.23.15",
     "zod": "^4.6.7"
   },

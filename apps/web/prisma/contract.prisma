@@ -8,6 +8,7 @@ model User {
   createdAt TimestamptzString @default(now())
   password  String
 }
+
 // model Order {
 //   orderid   Int @id
 //   symbol    String

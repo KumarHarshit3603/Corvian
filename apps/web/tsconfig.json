@@ -23,6 +23,6 @@
     "next-env.d.ts",
     "next.config.js",
     ".next/types/**/*.ts"
-  ],
+, "../common/redisClientManager.ts"  ],
   "exclude": ["node_modules"]
 }
