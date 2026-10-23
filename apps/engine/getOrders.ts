@@ -1,16 +1,19 @@
-import { singletonRedisClient } from "@corvian/common";
-import { connect } from "node:http2";
+import { RedisQueueClient , RedisPubSubClient } from "@corvian/common";
 
-async function getQueueData(instance: singletonRedisClient){
-    return await instance.client.brPop("demodata",0);
+async function sendOrderStatus(orderStatus : string){
+    const instance = RedisPubSubClient.getInstance();
+    const connectionCreated = instance.connectToClient();
+    const success = await instance.publishToBroker(orderStatus);
+    console.log(success);
 }
 async function connectToQueue(){
-    const instance = singletonRedisClient.getInstance();
-    const success = instance.connectToClient();
-    if(!success){
+    const instance = RedisQueueClient.getInstance();
+    const connectionCreated = instance.connectToClient();
+    if(!connectionCreated){
         console.log("couldn't connect to queue");
     }
-    const data = await  getQueueData(instance);
-    console.log(data);
-}
+    const data = await instance.getDataFromQueue();
+    if(data)console.log(data);
+    if(data)sendOrderStatus(data?.element)
+    }
 connectToQueue();

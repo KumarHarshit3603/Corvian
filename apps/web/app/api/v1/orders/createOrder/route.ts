@@ -1,20 +1,18 @@
 import {orderdata} from '@/app/utils/validation'
 import { NextRequest, NextResponse } from 'next/server'
-import {singletonRedisClient} from '@corvian/common'
+import {RedisPubSubClient, RedisQueueClient} from '@corvian/common'
 
-function createConnection(instance:singletonRedisClient){
-    return instance.connectToClient();
-}
-async function sendAndAwait(instance: singletonRedisClient, data:any):Promise<string | null>{
-    try{
-        await instance.client.lPush("demodata",JSON.stringify(data));
+async function sendAndAwait(queueClientInstance:RedisQueueClient,data: any){
+       const success = await queueClientInstance.sendDataToQueue(data);
 
-    }
-    catch(e){
-        console.log(e);
-    }
+       const timeout = setTimeout(()=>{
+             pubSubClintInstance.unsubscribeToBroker();
+            return null;
+       },10000)
 
-    return await instance.client.rPop("demodata");//just for testing , later will receive data from pub/sub system.
+       const pubSubClintInstance = RedisPubSubClient.getInstance();
+       const connectionCreated =  pubSubClintInstance.connectToClient();
+       if(connectionCreated) await pubSubClintInstance.subscribeToBroker();
 
 }
 export async function POST(req:NextRequest,res: NextResponse){
@@ -27,18 +25,17 @@ export async function POST(req:NextRequest,res: NextResponse){
         {status: 400}
     )
     }
-    const instance = singletonRedisClient.getInstance();
-    if(!createConnection(instance)){
+    const queueClientInstance = RedisQueueClient.getInstance();
+    const connectionCreated = queueClientInstance.connectToClient();
+    if(!connectionCreated){
         return NextResponse.json(
-            {message: "couldn't connect"},
-            {status : 500}
+            {message: "cant place order"},
+            {status: 500}
         )
     }
-    const response = await sendAndAwait(instance, body);
+ 
+    sendAndAwait(queueClientInstance,body);
     
-    
-    console.log(response);
-
     return NextResponse.json(
        { message: "order placed successfully" },
        {status: 200}   
