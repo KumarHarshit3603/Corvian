@@ -3,7 +3,7 @@ import { RedisQueueClient , RedisPubSubClient } from "@corvian/common";
 async function sendOrderStatus(orderStatus : string){
     const instance = RedisPubSubClient.getInstance();
     const connectionCreated = instance.connectToClient();
-    const success = await instance.publishToBroker(orderStatus);
+    const success = await instance.publishToBroker("orderStatus",orderStatus);
     console.log(success);
 }
 async function connectToQueue(){
@@ -12,8 +12,10 @@ async function connectToQueue(){
     if(!connectionCreated){
         console.log("couldn't connect to queue");
     }
-    const data = await instance.getDataFromQueue();
-    if(data)console.log(data);
-    if(data)sendOrderStatus(data?.element)
+    while(true){
+         const data = await instance.getDataFromQueue();
+        if(data)console.log(data);
+        if(data)sendOrderStatus(data?.element)
+    }
     }
 connectToQueue();

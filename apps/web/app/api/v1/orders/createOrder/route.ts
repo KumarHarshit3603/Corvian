@@ -6,13 +6,13 @@ async function sendAndAwait(queueClientInstance:RedisQueueClient,data: any){
        const success = await queueClientInstance.sendDataToQueue(data);
 
        const timeout = setTimeout(()=>{
-             pubSubClintInstance.unsubscribeToBroker();
+             pubSubClintInstance.unsubscribeToBroker("orderStatus");
             return null;
        },10000)
 
        const pubSubClintInstance = RedisPubSubClient.getInstance();
        const connectionCreated =  pubSubClintInstance.connectToClient();
-       if(connectionCreated) await pubSubClintInstance.subscribeToBroker();
+       if(connectionCreated) await pubSubClintInstance.subscribeToBroker("orderStatus");
 
 }
 export async function POST(req:NextRequest,res: NextResponse){
@@ -34,7 +34,7 @@ export async function POST(req:NextRequest,res: NextResponse){
         )
     }
  
-    sendAndAwait(queueClientInstance,body);
+    await sendAndAwait(queueClientInstance,body);
     
     return NextResponse.json(
        { message: "order placed successfully" },

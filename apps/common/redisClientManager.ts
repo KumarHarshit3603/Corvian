@@ -6,14 +6,14 @@ export class RedisQueueClient{
     public client : RedisClientType;
     public connection : Promise<RedisClientType> | null = null;
 
-    private constructor(){
+    private constructor(RedisUrl:string){
         this.client = createClient({
-            url: `redis://localhost:${PORT}`
+            url: RedisUrl
         })
     }
-    public static getInstance():RedisQueueClient{
+    public static getInstance(RedisUrl:string):RedisQueueClient{
         if(!RedisQueueClient.instance){
-            RedisQueueClient.instance = new RedisQueueClient();
+            RedisQueueClient.instance = new RedisQueueClient(RedisUrl);
         }
         return RedisQueueClient.instance;
     }
@@ -49,15 +49,15 @@ export class RedisPubSubClient{
     public client : RedisClientType;
     public connection : Promise<RedisClientType> | null  = null;
 
-    private constructor(){
+    private constructor(RedisUrl:string){
          this.client = createClient({
-            url: `redis://localhost:${PORT}`
+            url: RedisUrl
         })
 
     }
-    public static getInstance():RedisPubSubClient{
+    public static getInstance(RedisUrl:string):RedisPubSubClient{
         if(!RedisPubSubClient.instance){
-            RedisPubSubClient.instance = new RedisPubSubClient();
+            RedisPubSubClient.instance = new RedisPubSubClient(RedisUrl);
         }
         return RedisPubSubClient.instance;
     }
@@ -76,16 +76,16 @@ export class RedisPubSubClient{
         }
         return this.connection;
     }
-    public async  subscribeToBroker(){
-       await this.client.subscribe("orderStatus",(status)=>{
+    public async  subscribeToBroker(topic:string ){
+       await this.client.subscribe(topic,(status)=>{
             console.log(status);
         });
     }
-    public async unsubscribeToBroker(){
-        await this.client.unsubscribe("orderStatus");
+    public async unsubscribeToBroker(topic:string){
+        await this.client.unsubscribe(topic);
     }
-    public async publishToBroker(status: string){
-        await this.client.publish("orderStatus",status)
+    public async publishToBroker(topic:string,status: string){
+        await this.client.publish(topic,status)
         console.log("published to pubsub")
     }
 }
