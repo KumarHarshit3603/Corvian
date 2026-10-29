@@ -1,7 +1,10 @@
 import {orderdata} from '@/app/utils/validation'
 import { NextRequest, NextResponse } from 'next/server'
 import {RedisPubSubClient, RedisQueueClient} from '@corvian/common'
+import 'dotenv/config'
 
+const RedisServer = process.env.REDIS_SERVER1 || "redis://localhost:6379";
+console.log(RedisServer);
 async function sendAndAwait(queueClientInstance:RedisQueueClient,data: any){
        const success = await queueClientInstance.sendDataToQueue(data);
 
@@ -10,7 +13,7 @@ async function sendAndAwait(queueClientInstance:RedisQueueClient,data: any){
             return null;
        },10000)
 
-       const pubSubClintInstance = RedisPubSubClient.getInstance();
+       const pubSubClintInstance = RedisPubSubClient.getInstance(RedisServer);
        const connectionCreated =  pubSubClintInstance.connectToClient();
        if(connectionCreated) await pubSubClintInstance.subscribeToBroker("orderStatus");
 
@@ -25,7 +28,7 @@ export async function POST(req:NextRequest,res: NextResponse){
         {status: 400}
     )
     }
-    const queueClientInstance = RedisQueueClient.getInstance();
+    const queueClientInstance = RedisQueueClient.getInstance(RedisServer);
     const connectionCreated = queueClientInstance.connectToClient();
     if(!connectionCreated){
         return NextResponse.json(

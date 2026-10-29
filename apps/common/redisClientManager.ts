@@ -1,8 +1,7 @@
 import {createClient , RedisClientType} from 'redis'
 
-const PORT = 6379;
 export class RedisQueueClient{
-    private static instance : RedisQueueClient | null = null;
+    private static instances : Map<string,RedisQueueClient> = new Map<string,RedisQueueClient>();
     public client : RedisClientType;
     public connection : Promise<RedisClientType> | null = null;
 
@@ -12,10 +11,12 @@ export class RedisQueueClient{
         })
     }
     public static getInstance(RedisUrl:string):RedisQueueClient{
-        if(!RedisQueueClient.instance){
-            RedisQueueClient.instance = new RedisQueueClient(RedisUrl);
+        if(!RedisQueueClient.instances.has(RedisUrl)){
+            const newInstance = new RedisQueueClient(RedisUrl);
+            RedisQueueClient.instances.set(RedisUrl,newInstance);
         }
-        return RedisQueueClient.instance;
+        //@ts-ignore
+        return RedisQueueClient.instances.get(RedisUrl);
     }
     public  connectToClient(): Promise<RedisClientType> | null{
         if(!this.client){
@@ -45,7 +46,7 @@ export class RedisQueueClient{
 }
 
 export class RedisPubSubClient{
-    private static instance : RedisPubSubClient;
+    private static instances : Map<string,RedisPubSubClient> = new Map<string,RedisPubSubClient>(); ;
     public client : RedisClientType;
     public connection : Promise<RedisClientType> | null  = null;
 
@@ -56,10 +57,12 @@ export class RedisPubSubClient{
 
     }
     public static getInstance(RedisUrl:string):RedisPubSubClient{
-        if(!RedisPubSubClient.instance){
-            RedisPubSubClient.instance = new RedisPubSubClient(RedisUrl);
+        if(!RedisPubSubClient.instances.has(RedisUrl)){
+            const newInstance = new RedisPubSubClient(RedisUrl);
+            RedisPubSubClient.instances.set(RedisUrl,newInstance);
         }
-        return RedisPubSubClient.instance;
+        //@ts-ignore
+        return RedisPubSubClient.instances.get(RedisUrl);
     }
     public connectToClient(){
         if(!this.client){
