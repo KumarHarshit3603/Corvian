@@ -80,15 +80,15 @@ export class RedisPubSubClient{
         return this.connection;
     }
     public async  subscribeToBroker(topic:string ){
-       await this.client.subscribe(topic,(status)=>{
-            console.log(status);
+       return await this.client.subscribe(topic,(status)=>{
+           console.log(status);
         });
     }
     public async unsubscribeToBroker(topic:string){
         await this.client.unsubscribe(topic);
     }
     public async publishToBroker(topic:string,status: string){
-        await this.client.publish(topic,status)
-        console.log("published to pubsub")
+       return await this.client.publish(topic,status)
+        // console.log("published to pubsub")
     }
 }

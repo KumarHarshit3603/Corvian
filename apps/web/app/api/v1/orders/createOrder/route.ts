@@ -9,13 +9,13 @@ async function sendAndAwait(queueClientInstance:RedisQueueClient,data: any){
        const success = await queueClientInstance.sendDataToQueue(data);
 
        const timeout = setTimeout(()=>{
-             pubSubClintInstance.unsubscribeToBroker("orderStatus");
+             pubSubClientInstance.unsubscribeToBroker("orderStatus");
             return null;
        },10000)
 
-       const pubSubClintInstance = RedisPubSubClient.getInstance(RedisServer);
-       const connectionCreated =  pubSubClintInstance.connectToClient();
-       if(connectionCreated) await pubSubClintInstance.subscribeToBroker("orderStatus");
+       const pubSubClientInstance = RedisPubSubClient.getInstance(RedisServer);
+       const connectionCreated =  pubSubClientInstance.connectToClient();
+       if(connectionCreated) await pubSubClientInstance.subscribeToBroker("orderStatus");
 
 }
 export async function POST(req:NextRequest,res: NextResponse){

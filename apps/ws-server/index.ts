@@ -13,6 +13,7 @@ function webSocketConnection(){
     const wss = new WebSocketServer({server: wsserver});
 
     wss.on("connection",(ws)=>{
+        
         ws.on("error",(err)=>{
             console.log(err);
         })
