@@ -1,4 +1,4 @@
-import {z} from 'zod'
+import {optional, z} from 'zod'
 
 export const userdata = z.object({
     name : z.string(),
@@ -13,5 +13,6 @@ export const orderdata = z.object({
     side : z.enum(["BUY","SELL"]),
     type : z.enum(["MARKET","LIMIT"]),
     price : z.string(),
-    quantity: z.string()
+    quantity: z.string(),
+    kind : z.enum(["ioc"]).optional(),
 })
