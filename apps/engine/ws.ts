@@ -1,5 +1,5 @@
 import { RedisPubSubClient,RedisQueueClient } from "@corvian/common";
-const RedisServerB = process.env.REDIS_SERVERB || "redis://localhost:6379";
+const RedisServerB = process.env.REDIS_SERVERB || "redis://localhost:6000";
 
 export async function connectToWS(){
         const wsConnectionInstance = RedisPubSubClient.getInstance(RedisServerB);

@@ -25,6 +25,18 @@ export const orderbook : orderbook = {
 export interface fill{
     orderId : string,
     filledQuantity : number,
-    remainingQuantity : number
+    price : BigInt
 }
 
+enum fillStatus {
+    "FULLY_FILLED",
+    "PARTIALLY_FILLED"
+}
+
+export interface responseObject {
+    orderId : string , 
+    symbol : string ,
+    executedQuantity : number,
+    remainingQuantity : number,
+    fills : fill[]
+}

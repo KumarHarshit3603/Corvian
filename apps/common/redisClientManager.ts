@@ -49,7 +49,8 @@ export class RedisPubSubClient{
     private static instances : Map<string,RedisPubSubClient> = new Map<string,RedisPubSubClient>(); ;
     public client : RedisClientType;
     public connection : Promise<RedisClientType> | null  = null;
-
+    private subscribedTopics = new Set<string>();
+    
     private constructor(RedisUrl:string){
          this.client = createClient({
             url: RedisUrl
@@ -80,12 +81,17 @@ export class RedisPubSubClient{
         return this.connection;
     }
     public async  subscribeToBroker(topic:string ){
-       return await this.client.subscribe(topic,(status)=>{
+         if (this.subscribedTopics.has(topic)) {
+            return;
+        }
+        await this.client.subscribe(topic,(status)=>{
            console.log(status);
         });
+         this.subscribedTopics.add(topic);
     }
     public async unsubscribeToBroker(topic:string){
         await this.client.unsubscribe(topic);
+         this.subscribedTopics.delete(topic);
     }
     public async publishToBroker(topic:string,status: string){
        return await this.client.publish(topic,status)

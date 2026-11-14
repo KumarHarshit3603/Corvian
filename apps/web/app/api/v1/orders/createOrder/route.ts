@@ -6,6 +6,9 @@ import 'dotenv/config'
 const RedisServer = process.env.REDIS_SERVER1 || "redis://localhost:6379";
 console.log(RedisServer);
 async function sendAndAwait(queueClientInstance:RedisQueueClient,data: any){
+    const pubSubClientInstance = RedisPubSubClient.getInstance(RedisServer);
+    const connectionCreated =  pubSubClientInstance.connectToClient();
+    if(connectionCreated) await pubSubClientInstance.subscribeToBroker("orderStatus");
        const success = await queueClientInstance.sendDataToQueue(data);
 
        const timeout = setTimeout(()=>{
@@ -13,9 +16,7 @@ async function sendAndAwait(queueClientInstance:RedisQueueClient,data: any){
             return null;
        },10000)
 
-       const pubSubClientInstance = RedisPubSubClient.getInstance(RedisServer);
-       const connectionCreated =  pubSubClientInstance.connectToClient();
-       if(connectionCreated) await pubSubClientInstance.subscribeToBroker("orderStatus");
+
 
 }
 export async function POST(req:NextRequest,res: NextResponse){
