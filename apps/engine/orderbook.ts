@@ -2,7 +2,7 @@ interface order{
     orderId : string,
     symbol: string,
     type: "MARKET" | 'LIMIT',
-    price: BigInt,
+    price: number,
     quantity: number,
     kind : "ioc" | null
 }
@@ -12,25 +12,26 @@ interface bid extends order{
 interface ask extends order{
     side : "SELL"
 }
-interface orderbook{
+export interface orderbook{
     asks: ask[],
     bids: bid[]
 }
- 
-export const orderbook : orderbook = {
-    asks : [],
-    bids : []
+
+const orderbooks = new Map<string, orderbook>();
+
+export function getOrderbook(symbol: string): orderbook {
+    let book = orderbooks.get(symbol);
+    if (!book) {
+        book = { asks: [], bids: [] };
+        orderbooks.set(symbol, book);
+    }
+    return book;
 }
 
 export interface fill{
     orderId : string,
     filledQuantity : number,
-    price : BigInt
-}
-
-enum fillStatus {
-    "FULLY_FILLED",
-    "PARTIALLY_FILLED"
+    price : number
 }
 
 export interface responseObject {

@@ -7,8 +7,12 @@ const RedisServer = process.env.REDIS_SERVER1 || "redis://localhost:6379";
 console.log(RedisServer);
 async function sendAndAwait(queueClientInstance:RedisQueueClient,data: any){
     const pubSubClientInstance = RedisPubSubClient.getInstance(RedisServer);
-    const connectionCreated =  pubSubClientInstance.connectToClient();
-    if(connectionCreated) await pubSubClientInstance.subscribeToBroker("orderStatus");
+    const connectionCreated = await pubSubClientInstance.connectToClient();
+    if (connectionCreated) {
+        await pubSubClientInstance.subscribeToBroker("orderStatus", (message) => {
+            console.log("Order status received from pub/sub:", message);
+        });
+    }
        const success = await queueClientInstance.sendDataToQueue(data);
 
        const timeout = setTimeout(()=>{
@@ -19,10 +23,10 @@ async function sendAndAwait(queueClientInstance:RedisQueueClient,data: any){
 
 
 }
-export async function POST(req:NextRequest,res: NextResponse){
+export async function POST(req: NextRequest) {
     const body = await req.json();
     const valid = orderdata.safeParse(body);
-    if(!valid){
+    if(!valid.success){
         return NextResponse.json({
             message:"invalid order"
         },
@@ -30,15 +34,17 @@ export async function POST(req:NextRequest,res: NextResponse){
     )
     }
     const queueClientInstance = RedisQueueClient.getInstance(RedisServer);
-    const connectionCreated = queueClientInstance.connectToClient();
-    if(!connectionCreated){
+    try {
+        await queueClientInstance.connectToClient();
+    } catch (error) {
+        console.error("Could not connect to the order queue", error);
         return NextResponse.json(
-            {message: "cant place order"},
-            {status: 500}
+            {message: "Can't place order"},
+            {status: 503}
         )
     }
  
-    await sendAndAwait(queueClientInstance,body);
+    await sendAndAwait(queueClientInstance,valid.data);
     
     return NextResponse.json(
        { message: "order placed successfully" },

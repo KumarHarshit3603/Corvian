@@ -1,15 +1,22 @@
-import { RedisPubSubClient,RedisQueueClient } from "@corvian/common";
-const RedisServerB = process.env.REDIS_SERVERB || "redis://localhost:6000";
+import { RedisPubSubClient } from "@corvian/common";
 
-export async function connectToWS(){
-        const wsConnectionInstance = RedisPubSubClient.getInstance(RedisServerB);
-        const connectionCreated = wsConnectionInstance.connectToClient();
-        if(!connectionCreated){
-            console.log("ws server connection error");
-        }
-        return wsConnectionInstance;
+const redisUrl = process.env.REDIS_SERVERB || "redis://localhost:6380";
+
+export async function connectToWS() {
+  const client = RedisPubSubClient.getInstance(redisUrl);
+  await client.connectToClient();
+  return client;
 }
-export async function sendToWS(wsConnectionInstance: RedisPubSubClient,data: string , topic : string){
-        return  wsConnectionInstance.publishToBroker(topic , data);
+
+export async function publishMarketData(
+  client: RedisPubSubClient,
+  topic: string,
+  payload: unknown,
+) {
+  try {
+    return await client.publishToBroker(topic, JSON.stringify(payload));
+  } catch (error) {
+    console.error(`Could not publish market data to ${topic}`, error);
+    return 0;
+  }
 }
-connectToWS();

@@ -1,5 +1,6 @@
 import { Maximize2 } from "lucide-react";
-import { timeframes } from "../../data/mock";
+
+const timeframes = ["1s", "1m", "15m", "1h", "4h", "1D", "1W"];
 
 export default function ChartToolbar({ timeframe, onTimeframeChange, onFullscreen }) {
   return (

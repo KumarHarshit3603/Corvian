@@ -22,34 +22,6 @@ export const watchlist = [
   { symbol: "DOGE", name: "Dogecoin", price: "$0.16", change: 3.26, color: "#c2a633" },
 ];
 
-export const timeframes = ["15m", "1h", "4h", "1D", "1W"];
-export const ohlc = { o: "66,845.12", h: "67,910.00", l: "66,210.44", c: "67,432.21", chg: "+0.88%" };
-export const pairStats = {
-  pair: "BTC/USDT", coin: "Bitcoin / Tether", price: "67,432.21", priceUsd: "$67,432.21",
-  change: 2.36, high: "68,120.00", low: "65,890.12", volBtc: "18,245.67", volUsdt: "1.23B",
-};
-
-export const asks = [
-  { price: "67,440.12", amount: "0.842", total: "56,805.38", depth: 0.46 },
-  { price: "67,438.50", amount: "1.205", total: "81,313.39", depth: 0.68 },
-  { price: "67,436.00", amount: "0.534", total: "36,077.82", depth: 0.34 },
-  { price: "67,434.72", amount: "2.140", total: "144,310.30", depth: 0.86 },
-  { price: "67,433.80", amount: "0.716", total: "48,276.20", depth: 0.52 },
-];
-export const bids = [
-  { price: "67,432.21", amount: "1.184", total: "79,919.74", depth: 0.72 },
-  { price: "67,430.00", amount: "0.628", total: "42,366.04", depth: 0.43 },
-  { price: "67,428.55", amount: "1.756", total: "118,394.13", depth: 0.81 },
-  { price: "67,426.10", amount: "0.395", total: "26,633.92", depth: 0.29 },
-  { price: "67,424.00", amount: "2.018", total: "136,021.63", depth: 0.92 },
-];
-export const recentTrades = [
-  { price: "67,432.21", amount: "0.0241", time: "14:32:08", side: "buy" },
-  { price: "67,431.80", amount: "0.1084", time: "14:32:06", side: "sell" },
-  { price: "67,433.12", amount: "0.0520", time: "14:32:03", side: "buy" },
-  { price: "67,430.44", amount: "0.0168", time: "14:31:59", side: "sell" },
-  { price: "67,432.00", amount: "0.0912", time: "14:31:54", side: "buy" },
-];
 export const orderTabs = ["Open Orders", "Order History", "Trade History"];
 export const orders = [
   { date: "2026-11-12 14:32", pair: "BTC/USDT", type: "Limit", side: "Buy", price: "65,800.00", amount: "0.042", filled: "0.000", total: "2,763.60", status: "Open" },

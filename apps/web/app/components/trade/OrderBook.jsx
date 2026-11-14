@@ -3,10 +3,21 @@ import { ArrowUp, ChevronDown } from "lucide-react";
 import Tabs from "../common/Tabs";
 import OrderBookRow from "./OrderBookRow";
 import RatioBar from "./RatioBar";
-import { asks, bids, pairStats } from "../../data/mock";
 
-export default function OrderBook() {
+const format = (value, digits = 2) => Number(value).toLocaleString(undefined, {
+  minimumFractionDigits: digits,
+  maximumFractionDigits: digits,
+});
+
+export default function OrderBook({ orderbook, depth, trades = [], status }) {
   const [tab, setTab] = useState("Order Book");
+  const asks = orderbook?.asks ?? [];
+  const bids = orderbook?.bids ?? [];
+  const bidQuantity = depth?.bidQuantity ?? bids.reduce((sum, level) => sum + Number(level.quantity ?? level.amount), 0);
+  const askQuantity = depth?.askQuantity ?? asks.reduce((sum, level) => sum + Number(level.quantity ?? level.amount), 0);
+  const totalDepth = bidQuantity + askQuantity;
+  const buyPercent = totalDepth ? Math.round((bidQuantity / totalDepth) * 100) : 50;
+  const lastPrice = bids[0]?.price ?? asks[0]?.price;
 
   return (
     <section className="flex min-h-0 flex-col rounded-xl border border-line bg-panel">
@@ -26,18 +37,36 @@ export default function OrderBook() {
         <span className="text-right">Total (USDT)</span>
       </div>
 
-      <div>{asks.map((r) => <OrderBookRow key={r.price} row={r} side="ask" />)}</div>
+      {tab === "Order Book" ? (
+        <>
+          <div className="flex-1 overflow-y-auto">
+            {asks.length ? [...asks].reverse().map((row) => <OrderBookRow key={row.price} row={row} side="ask" />) : null}
+          </div>
+          <div className="flex items-baseline gap-2.5 px-3 py-3.5">
+            <span className="flex items-center gap-1 text-[22px] font-semibold text-up">
+              {lastPrice === undefined ? "—" : format(lastPrice)} <ArrowUp size={16} />
+            </span>
+            <span className="text-[11px] text-muted">{status === "connected" ? "Live" : "Connecting…"}</span>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {bids.length ? bids.map((row) => <OrderBookRow key={row.price} row={row} side="bid" />) : null}
+          </div>
+          {!orderbook && <p className="px-3 py-2 text-center text-xs text-muted">Waiting for the first market update</p>}
+        </>
+      ) : (
+        <div className="flex-1 overflow-y-auto px-3 text-xs">
+          {trades.slice(0, 8).map((trade) => (
+            <div key={trade.id ?? `${trade.timestamp}-${trade.price}`} className="grid grid-cols-3 py-1.5 tabular-nums">
+              <span className={trade.side === "buy" ? "text-up" : "text-down"}>{format(trade.price)}</span>
+              <span className="text-right text-slate-200">{Number(trade.amount).toFixed(4)}</span>
+              <span className="text-right text-muted">{new Date(trade.timestamp).toLocaleTimeString()}</span>
+            </div>
+          ))}
+          {!trades.length && <p className="py-2 text-center text-muted">Waiting for matched trades</p>}
+        </div>
+      )}
 
-      <div className="flex items-baseline gap-2.5 px-3 py-3.5">
-        <span className="flex items-center gap-1 text-[22px] font-semibold text-up">
-          {pairStats.price} <ArrowUp size={16} />
-        </span>
-        <span className="text-[11px] text-muted">{pairStats.priceUsd}</span>
-      </div>
-
-      <div>{bids.map((r) => <OrderBookRow key={r.price} row={r} side="bid" />)}</div>
-
-      <RatioBar buy={52} sell={48} />
+      <RatioBar buy={buyPercent} sell={100 - buyPercent} />
     </section>
   );
 }

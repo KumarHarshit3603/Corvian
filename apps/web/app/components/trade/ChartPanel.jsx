@@ -1,10 +1,9 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import ChartToolbar from "./ChartToolbar";
 import ChartLegend from "./ChartLegend";
 import TradingChart from "./TradingChart";
 
-export default function ChartPanel({ chartContainerRef }) {
-  const [timeframe, setTimeframe] = useState("1h");
+export default function ChartPanel({ timeframe, onTimeframeChange, candle, candles }) {
   const panelRef = useRef(null);
 
   const enterFullscreen = () => {
@@ -18,12 +17,12 @@ export default function ChartPanel({ chartContainerRef }) {
   return (
     <section
       ref={panelRef}
-      className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-panel [&:fullscreen]:h-screen [&:fullscreen]:w-screen [&:fullscreen]:rounded-none"
+      className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-panel [&:fullscreen]:h-screen [&:fullscreen]:w-screen [&:fullscreen]:rounded-none"
     >
-      <ChartToolbar timeframe={timeframe} onTimeframeChange={setTimeframe} onFullscreen={enterFullscreen} />
+      <ChartToolbar timeframe={timeframe} onTimeframeChange={onTimeframeChange} onFullscreen={enterFullscreen} />
       <div className="relative min-h-0 flex-1">
-        <ChartLegend timeframe={timeframe} />
-        <TradingChart chartContainerRef={chartContainerRef} />
+        <ChartLegend timeframe={timeframe} candle={candle} />
+        <TradingChart timeframe={timeframe} candle={candle} candles={candles} />
       </div>
     </section>
   );
