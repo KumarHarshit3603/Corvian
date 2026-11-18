@@ -15,10 +15,11 @@ const minimumOrderNotional = Math.max(1, Number(process.env.MARKET_MAKER_MIN_ORD
 const maximumOrderNotional = Math.max(minimumOrderNotional, Number(process.env.MARKET_MAKER_MAX_ORDER_NOTIONAL || 2_000));
 const minimumTradeNotional = Math.max(1, Number(process.env.MARKET_MAKER_MIN_TRADE_NOTIONAL || 5_000));
 const maximumTradeNotional = Math.max(minimumTradeNotional, Number(process.env.MARKET_MAKER_MAX_TRADE_NOTIONAL || 30_000));
-const repriceIntervalMs = Math.max(1_000, Number(process.env.MARKET_MAKER_REPRICE_INTERVAL_MS || 10_000));
-const repriceFraction = Math.min(0.1, Math.max(0.001, Number(process.env.MARKET_MAKER_REPRICE_FRACTION || 0.01)));
+const repriceIntervalMs = Math.max(1_000, Number(process.env.MARKET_MAKER_REPRICE_INTERVAL_MS || 2_000));
+const repriceFraction = Math.min(0.1, Math.max(0.001, Number(process.env.MARKET_MAKER_REPRICE_FRACTION || 0.05)));
 const tradeIntervalMs = Number(process.env.MARKET_MAKER_TRADE_INTERVAL_MS || 250);
-const symbols: MarketConfig[] = (process.env.MARKET_MAKER_SYMBOLS || "BTCUSDT:67000:0.1,ETHUSDT:2470:0.01,SOLUSDT:162:0.01")
+const flowSource = process.env.MARKET_MAKER_FLOW_SOURCE || "binance";
+const symbols: MarketConfig[] = (process.env.MARKET_MAKER_SYMBOLS || "BTC/USDT:67000:0.1,ETH/USDT:2470:0.01,SOL/USDT:162:0.01")
   .split(",")
   .map((entry) => {
     const [symbol, referencePrice, tickSize] = entry.trim().split(":");
@@ -32,7 +33,7 @@ const symbols: MarketConfig[] = (process.env.MARKET_MAKER_SYMBOLS || "BTCUSDT:67
 
 const queue = RedisQueueClient.getInstance(queueUrl);
 const marketData = RedisPubSubClient.getInstance(marketDataUrl);
-const state = new Map<string, { book: MarketBook; price: number; refilling: boolean; repricing: boolean; depthVersion: number; fairPriceInitialized: boolean; quoteOrderIds: Array<{ orderID: string; side: "BUY" | "SELL" }>; nextTakerSide: "BUY" | "SELL" }>();
+const state = new Map<string, { book: MarketBook; price: number; refilling: boolean; repricing: boolean; depthVersion: number; fairPriceInitialized: boolean; quoteOrderIds: Array<{ orderID: string; side: "BUY" | "SELL" }>; nextTakerSide: "BUY" | "SELL"; lastReferenceFlowAt: number; referenceFeedConnected: boolean; referenceSocket?: WebSocket }>();
 let orderSequence = 0;
 
 function parseMessage<T>(rawMessage: string): T | undefined {
@@ -190,23 +191,21 @@ async function repriceQuotes(config: MarketConfig) {
   }
 }
 
-async function simulateTrade(config: MarketConfig) {
+async function queueMarketOrder(config: MarketConfig, side: "BUY" | "SELL", quantity: number, orderPrefix = "mm-taker") {
   const market = state.get(config.symbol);
   if (!market?.book.bids.length || !market.book.asks.length) return;
 
-  if (Math.random() > 0.6) market.nextTakerSide = market.nextTakerSide === "BUY" ? "SELL" : "BUY";
-  const side = market.nextTakerSide;
   const bestOpposite = side === "BUY" ? market.book.asks[0] : market.book.bids[0];
   const price = Number(bestOpposite.price) + (side === "BUY" ? config.tickSize : -config.tickSize);
-  if (!Number.isFinite(price) || price <= 0) return;
+  if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(quantity) || quantity <= 0) return;
 
   const order = {
-    orderID: `mm-taker-${config.symbol}-${Date.now()}-${++orderSequence}`,
+    orderID: `${orderPrefix}-${config.symbol}-${Date.now()}-${++orderSequence}`,
     symbol: config.symbol,
     side,
     type: "MARKET",
     price: String(roundToTick(price, config.tickSize)),
-    quantity: ((minimumTradeNotional + Math.random() * (maximumTradeNotional - minimumTradeNotional)) / Number(bestOpposite.price)).toFixed(8),
+    quantity: quantity.toFixed(8),
     kind: "ioc",
   };
 
@@ -215,6 +214,61 @@ async function simulateTrade(config: MarketConfig) {
   } catch (error) {
     console.error(`Market maker could not queue a simulated ${side.toLowerCase()} trade for ${config.symbol}`, error);
   }
+}
+
+async function simulateTrade(config: MarketConfig) {
+  const market = state.get(config.symbol);
+  if (!market) return;
+  // Use local flow only when Binance is disabled or its public stream is quiet.
+  if (flowSource === "binance" && Date.now() - market.lastReferenceFlowAt < 3_000) return;
+  if (Math.random() > 0.6) market.nextTakerSide = market.nextTakerSide === "BUY" ? "SELL" : "BUY";
+  const bestOpposite = market.nextTakerSide === "BUY" ? market.book.asks[0] : market.book.bids[0];
+  if (!bestOpposite) return;
+  const notional = minimumTradeNotional + Math.random() * (maximumTradeNotional - minimumTradeNotional);
+  await queueMarketOrder(config, market.nextTakerSide, notional / Number(bestOpposite.price));
+}
+
+function connectBinanceReference(config: MarketConfig) {
+  const market = state.get(config.symbol);
+  if (!market || flowSource !== "binance") return;
+  const stream = `${config.symbol.toLowerCase()}@aggTrade/${config.symbol.toLowerCase()}@bookTicker`;
+  const socket = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${stream}`);
+  market.referenceSocket = socket;
+
+  socket.addEventListener("open", () => {
+    market.referenceFeedConnected = true;
+    console.info(`Market maker connected to Binance reference flow for ${config.symbol}`);
+  });
+  socket.addEventListener("message", (event) => {
+    try {
+      const envelope = JSON.parse(String(event.data)) as { data?: Record<string, unknown> };
+      const data = envelope.data;
+      if (!data) return;
+
+      if (typeof data.b === "string" && typeof data.a === "string") {
+        const bid = Number(data.b);
+        const ask = Number(data.a);
+        if (bid > 0 && ask >= bid) {
+          market.price = (bid + ask) / 2;
+          market.fairPriceInitialized = true;
+        }
+      }
+
+      if (data.e === "aggTrade" && typeof data.q === "string" && typeof data.m === "boolean") {
+        market.lastReferenceFlowAt = Date.now();
+        // In Binance aggTrade, m=true means the buyer was maker, so the taker sold.
+        const side = data.m ? "SELL" : "BUY";
+        void queueMarketOrder(config, side, Number(data.q), "binance-flow");
+      }
+    } catch (error) {
+      console.error(`Could not parse Binance reference flow for ${config.symbol}`, error);
+    }
+  });
+  socket.addEventListener("close", () => {
+    market.referenceFeedConnected = false;
+    setTimeout(() => connectBinanceReference(config), 2_000);
+  });
+  socket.addEventListener("error", () => socket.close());
 }
 
 async function start() {
@@ -233,6 +287,8 @@ async function start() {
       fairPriceInitialized: false,
       quoteOrderIds: [],
       nextTakerSide: Math.random() < 0.5 ? "BUY" : "SELL",
+      lastReferenceFlowAt: 0,
+      referenceFeedConnected: false,
     });
 
     await marketData.subscribeToBroker(`depth:${config.symbol}`, (message) => {
@@ -254,7 +310,8 @@ async function start() {
       void addQuotes(config);
     });
 
-    await marketData.subscribeToBroker(`ticker:${config.symbol}`, (message) => {
+    if (flowSource === "binance") connectBinanceReference(config);
+    else await marketData.subscribeToBroker(`ticker:${config.symbol}`, (message) => {
       const ticker = parseMessage<{ price?: number }>(message);
       const market = state.get(config.symbol);
       if (ticker?.price && Number.isFinite(ticker.price) && market) market.price = ticker.price;

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PlusCircle } from "lucide-react";
 import Tabs from "../common/Tabs";
 import BuySellToggle from "./BuySellToggle";
@@ -6,8 +6,10 @@ import FormField from "./FormField";
 import PercentSlider from "./PercentSlider";
 
 const AVAILABLE_USDT = 1234.56;
+const defaultPrices = { "BTC/USDT": "67432.21", "ETH/USDT": "2470", "SOL/USDT": "162" };
 
-export default function OrderForm({ ticker }) {
+export default function OrderForm({ pair = "BTC/USDT", ticker }) {
+  const [baseCurrency, quoteCurrency] = pair.split("/");
   const [market, setMarket] = useState("Spot");
   const [side, setSide] = useState("buy");
   const [orderType, setOrderType] = useState("Limit");
@@ -16,6 +18,10 @@ export default function OrderForm({ ticker }) {
   const [percent, setPercent] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState("");
+
+  useEffect(() => {
+    setPrice(defaultPrices[pair] ?? "");
+  }, [pair]);
 
   const displayedPrice = orderType === "Market" && ticker?.price ? String(ticker.price) : price;
   const maxBuy = AVAILABLE_USDT / (Number(displayedPrice) || 1);
@@ -42,7 +48,7 @@ export default function OrderForm({ ticker }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderID: globalThis.crypto?.randomUUID?.() ?? `web-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-          symbol: "BTCUSDT",
+          symbol: pair,
           side: side.toUpperCase(),
           type: orderType === "Market" ? "MARKET" : "LIMIT",
           price: String(orderPrice),
@@ -83,12 +89,12 @@ export default function OrderForm({ ticker }) {
       </div>
 
       <div className="mt-4 flex flex-col gap-4">
-        <FormField label="Price (USDT)" value={displayedPrice} onChange={setPrice} spinner readOnly={orderType === "Market"} />
+        <FormField label={`Price (${quoteCurrency})`} value={displayedPrice} onChange={setPrice} spinner readOnly={orderType === "Market"} />
         <div>
-          <FormField label="Amount (BTC)" value={amount} onChange={setAmount} placeholder="Min 0.0001" />
+          <FormField label={`Amount (${baseCurrency})`} value={amount} onChange={setAmount} placeholder="Min 0.0001" />
           <PercentSlider value={percent} onChange={onPercent} />
         </div>
-        <FormField label="Total (USDT)" value={total === "0.00" ? "" : total} placeholder="0.00" readOnly />
+        <FormField label={`Total (${quoteCurrency})`} value={total === "0.00" ? "" : total} placeholder="0.00" readOnly />
       </div>
 
       <button
@@ -96,7 +102,7 @@ export default function OrderForm({ ticker }) {
         disabled={submitting || !amount || Number(amount) <= 0}
         className={`mt-5 h-11 w-full rounded-lg text-[14px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${side === "buy" ? "bg-up" : "bg-down"}`}
       >
-        {submitting ? "Submitting..." : `${side === "buy" ? "Buy" : "Sell"} BTC`}
+        {submitting ? "Submitting..." : `${side === "buy" ? "Buy" : "Sell"} ${baseCurrency}`}
       </button>
       {feedback && <p className={`mt-2 text-xs ${feedback.startsWith("Could not") || feedback.startsWith("Enter") ? "text-down" : "text-muted"}`}>{feedback}</p>}
 
@@ -104,13 +110,13 @@ export default function OrderForm({ ticker }) {
         <div className="flex items-center justify-between">
           <dt className="text-slate-300">Available</dt>
           <dd className="flex items-center gap-1.5 text-white">
-            {AVAILABLE_USDT.toLocaleString("en-US", { minimumFractionDigits: 2 })} USDT
+            {AVAILABLE_USDT.toLocaleString("en-US", { minimumFractionDigits: 2 })} {quoteCurrency}
             <PlusCircle size={14} className="text-up" />
           </dd>
         </div>
         <div className="flex items-center justify-between">
           <dt className="text-slate-300">Max Buy</dt>
-          <dd className="text-white">{maxBuy.toFixed(4)} BTC</dd>
+          <dd className="text-white">{maxBuy.toFixed(4)} {baseCurrency}</dd>
         </div>
       </dl>
     </section>

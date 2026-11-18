@@ -3,7 +3,7 @@ import ChartToolbar from "./ChartToolbar";
 import ChartLegend from "./ChartLegend";
 import TradingChart from "./TradingChart";
 
-export default function ChartPanel({ timeframe, onTimeframeChange, candle, candles }) {
+export default function ChartPanel({ pair = "BTC/USDT", timeframe, onTimeframeChange, candle, candles }) {
   const panelRef = useRef(null);
 
   const enterFullscreen = () => {
@@ -21,8 +21,8 @@ export default function ChartPanel({ timeframe, onTimeframeChange, candle, candl
     >
       <ChartToolbar timeframe={timeframe} onTimeframeChange={onTimeframeChange} onFullscreen={enterFullscreen} />
       <div className="relative min-h-0 flex-1">
-        <ChartLegend timeframe={timeframe} candle={candle} />
-        <TradingChart timeframe={timeframe} candle={candle} candles={candles} />
+        <ChartLegend pair={pair} timeframe={timeframe} candle={candle} />
+        <TradingChart pair={pair} timeframe={timeframe} candle={candle} candles={candles} />
       </div>
     </section>
   );

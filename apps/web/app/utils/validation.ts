@@ -9,7 +9,7 @@ export const userdata = z.object({
 
 export const orderdata = z.object({
     orderID : z.string(),
-    symbol: z.string(),
+    symbol: z.string().regex(/^[A-Z0-9]+\/[A-Z0-9]+$/, "Symbol must use BASE/QUOTE format"),
     side : z.enum(["BUY","SELL"]),
     type : z.enum(["MARKET","LIMIT"]),
     price : z.string(),

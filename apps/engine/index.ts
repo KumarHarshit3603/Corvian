@@ -1,6 +1,7 @@
 import { connectToQueue, sendOrderStatus } from "./getOrders";
 import { connectToWS, publishMarketData } from "./ws";
-import { getOrderbook, type fill, type orderbook, type responseObject } from "./orderbook";
+import { addToOrderbook, getOrderbook, matchOrder, normalizeSymbol, shouldRestOrder, type fill, type orderbook, type responseObject } from "./orderbook";
+import { calculateBalanceDelta, validateOrder } from "./tradingRules";
 
 type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number };
 
@@ -44,39 +45,6 @@ async function loadCandleHistory(symbol: string, timeframe: string) {
   candles.set(key, history);
   loadedCandleHistories.add(key);
   return history;
-}
-
-function normalizeSymbol(symbol: string) {
-  return symbol.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-}
-
-function addToOrderbook(book: orderbook, order: any, sort = true) {
-  const side = order.side === "BUY" ? book.bids : book.asks;
-  side.push(order);
-  if (sort) side.sort((a, b) => order.side === "BUY" ? b.price - a.price : a.price - b.price);
-}
-
-function matchOrder(book: orderbook, order: any): fill[] {
-  const fills: fill[] = [];
-  const oppositeSide = order.side === "BUY" ? book.asks : book.bids;
-  let index = 0;
-
-  while (index < oppositeSide.length && order.quantity > 0) {
-    const restingOrder = oppositeSide[index];
-    const crosses = order.type === "MARKET" || (order.side === "BUY"
-      ? restingOrder.price <= order.price
-      : restingOrder.price >= order.price);
-    if (!crosses) break;
-
-    const filledQuantity = Math.min(restingOrder.quantity, order.quantity);
-    restingOrder.quantity -= filledQuantity;
-    order.quantity -= filledQuantity;
-    fills.push({ orderId: order.orderID, filledQuantity, price: restingOrder.price });
-
-    if (restingOrder.quantity <= 0) oppositeSide.splice(index, 1);
-    else index += 1;
-  }
-  return fills;
 }
 
 function getBookRows(side: any[], descending: boolean) {
@@ -135,7 +103,7 @@ async function publishBook(symbol: string, book: orderbook, onlyStream?: "orderb
 async function publishTrade(symbol: string, order: any, fill: fill) {
   const timestamp = Date.now();
   const trade = {
-    id: `${order.orderID}-${++tradeSequence}`,
+    id: `${order.orderId}-${++tradeSequence}`,
     symbol,
     side: order.side.toLowerCase(),
     price: fill.price,
@@ -266,20 +234,20 @@ async function processOrder(rawOrder: any) {
     return;
   }
 
-  const symbol = normalizeSymbol(String(rawOrder.symbol ?? ""));
-  if (rawOrder.action === "cancelBatch" && symbol && Array.isArray(rawOrder.orderIDs)) {
+  const rawSymbol = normalizeSymbol(String(rawOrder.symbol ?? ""));
+  if (rawOrder.action === "cancelBatch" && rawSymbol && Array.isArray(rawOrder.orderIDs)) {
     const orderIDs = new Set(rawOrder.orderIDs.filter((orderID: unknown): orderID is string => typeof orderID === "string"));
-    const book = getOrderbook(symbol);
+    const book = getOrderbook(rawSymbol);
     const beforeCount = book.bids.length + book.asks.length;
     book.bids = book.bids.filter((order) => !orderIDs.has(order.orderId));
     book.asks = book.asks.filter((order) => !orderIDs.has(order.orderId));
-    if (book.bids.length + book.asks.length !== beforeCount) await publishBook(symbol, book);
+    if (book.bids.length + book.asks.length !== beforeCount) await publishBook(rawSymbol, book);
     return;
   }
 
   if (rawOrder.action === "cancel") {
-    if (!symbol || typeof rawOrder.orderID !== "string") return;
-    const book = getOrderbook(symbol);
+    if (!rawSymbol || typeof rawOrder.orderID !== "string") return;
+    const book = getOrderbook(rawSymbol);
     let removed = false;
     for (const side of [book.bids, book.asks]) {
       for (let index = side.length - 1; index >= 0; index -= 1) {
@@ -289,40 +257,34 @@ async function processOrder(rawOrder: any) {
         }
       }
     }
-    if (removed) await publishBook(symbol, book);
+    if (removed) await publishBook(rawSymbol, book);
     return;
   }
 
-  const requestedQuantity = Number(rawOrder.quantity);
-  const order = {
-    ...rawOrder,
-    symbol,
-    price: Number(rawOrder.price),
-    quantity: requestedQuantity,
-  };
-
-  if (!symbol || !Number.isFinite(requestedQuantity) || requestedQuantity <= 0 ||
-      !Number.isFinite(order.price) || (order.type === "LIMIT" && order.price <= 0) ||
-      !["BUY", "SELL"].includes(order.side) || !["MARKET", "LIMIT"].includes(order.type)) {
-    console.error("Ignoring malformed order", rawOrder);
+  const validation = validateOrder(rawOrder);
+  if ("error" in validation) {
+    console.error("Ignoring malformed order:", validation.error, rawOrder);
     return;
   }
+  const { order, requestedQuantity } = validation;
 
-  const book = getOrderbook(symbol);
+  const book = getOrderbook(order.symbol);
+  const symbol = order.symbol;
   const fills = matchOrder(book, order);
   for (const fill of fills) await publishTrade(symbol, order, fill);
 
-  if (order.quantity > 0 && order.type !== "MARKET" && !order.kind) {
-    addToOrderbook(book, { ...order, orderId: order.orderID });
+  if (shouldRestOrder(order, order.quantity)) {
+    addToOrderbook(book, order);
   }
   await publishBook(symbol, book);
 
   const response: responseObject = {
-    orderId: order.orderID,
+    orderId: order.orderId,
     symbol,
     executedQuantity: fills.reduce((sum, fill) => sum + fill.filledQuantity, 0),
     remainingQuantity: Math.max(0, requestedQuantity - fills.reduce((sum, fill) => sum + fill.filledQuantity, 0)),
     fills,
+    balanceDelta: calculateBalanceDelta(order.side, fills),
   };
   await sendOrderStatus(JSON.stringify(response));
 }

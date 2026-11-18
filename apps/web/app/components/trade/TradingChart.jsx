@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 
 const emptyCandles = [];
 
-export default function TradingChart({ timeframe, candle, candles = emptyCandles }) {
+export default function TradingChart({ pair = "BTC/USDT", timeframe, candle, candles = emptyCandles }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
@@ -49,5 +49,5 @@ export default function TradingChart({ timeframe, candle, candles = emptyCandles
     }
   }, [candle]);
 
-  return <div ref={containerRef} className="h-full w-full" aria-label={`${timeframe} BTC/USDT candlestick chart`} />;
+  return <div ref={containerRef} className="h-full w-full" aria-label={`${timeframe} ${pair} candlestick chart`} />;
 }

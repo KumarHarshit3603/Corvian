@@ -9,7 +9,8 @@ const format = (value, digits = 2) => Number(value).toLocaleString(undefined, {
   maximumFractionDigits: digits,
 });
 
-export default function OrderBook({ orderbook, depth, trades = [], status }) {
+export default function OrderBook({ pair = "BTC/USDT", orderbook, depth, trades = [], status }) {
+  const [baseCurrency, quoteCurrency] = pair.split("/");
   const [tab, setTab] = useState("Order Book");
   const asks = orderbook?.asks ?? [];
   const bids = orderbook?.bids ?? [];
@@ -32,9 +33,9 @@ export default function OrderBook({ orderbook, depth, trades = [], status }) {
       </div>
 
       <div className="grid grid-cols-3 px-3 pb-2 pt-2.5 text-[11px] text-muted">
-        <span>Price (USDT)</span>
-        <span className="text-right">Amount (BTC)</span>
-        <span className="text-right">Total (USDT)</span>
+        <span>Price ({quoteCurrency})</span>
+        <span className="text-right">Amount ({baseCurrency})</span>
+        <span className="text-right">Total ({quoteCurrency})</span>
       </div>
 
       {tab === "Order Book" ? (
