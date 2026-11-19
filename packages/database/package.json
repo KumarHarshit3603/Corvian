@@ -1,0 +1,23 @@
+{
+  "name": "@corvian/database",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./db": "./db.ts"
+  },
+  "scripts": {
+    "contract:emit": "prisma contract emit",
+    "db:init": "prisma db init",
+    "db:migrate": "prisma db migrate",
+    "migration:plan": "prisma migration plan"
+  },
+  "dependencies": {
+    "@prisma/orm-postgres": "^8.0.0-rc.18",
+    "dotenv": "^18.0.8"
+  },
+  "devDependencies": {
+    "@prisma/cli-engine": "^0.7.0",
+    "prisma": "8.0.0-rc.23"
+  }
+}

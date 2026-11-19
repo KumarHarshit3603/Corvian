@@ -1,4 +1,5 @@
 import {orderdata} from '@/app/utils/validation'
+import { getSessionUserId } from '@/app/utils/session'
 import { NextRequest, NextResponse } from 'next/server'
 import {RedisPubSubClient, RedisQueueClient} from '@corvian/common'
 import 'dotenv/config'
@@ -24,6 +25,10 @@ async function sendAndAwait(queueClientInstance:RedisQueueClient,data: any){
 
 }
 export async function POST(req: NextRequest) {
+    if (!getSessionUserId(req)) {
+        return NextResponse.json({ message: "Sign in to place orders." }, { status: 401 });
+    }
+
     const body = await req.json();
     const valid = orderdata.safeParse(body);
     if(!valid.success){

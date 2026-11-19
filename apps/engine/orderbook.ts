@@ -54,7 +54,12 @@ export function matchOrder(book: orderbook, incomingOrder: order): fill[] {
         const filledQuantity = Math.min(restingOrder.quantity, incomingOrder.quantity);
         restingOrder.quantity -= filledQuantity;
         incomingOrder.quantity -= filledQuantity;
-        fills.push({ orderId: incomingOrder.orderId, filledQuantity, price: restingOrder.price });
+        fills.push({
+            orderId: incomingOrder.orderId,
+            makerOrderId: restingOrder.orderId,
+            filledQuantity,
+            price: restingOrder.price,
+        });
 
         if (restingOrder.quantity <= 0) oppositeSide.splice(index, 1);
         else index += 1;
@@ -69,6 +74,7 @@ export function shouldRestOrder(incomingOrder: order, remainingQuantity: number)
 
 export interface fill{
     orderId : string,
+    makerOrderId: string,
     filledQuantity : number,
     price : number
 }

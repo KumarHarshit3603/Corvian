@@ -13,7 +13,7 @@ const pageByLink = {
   More: "history",
 };
 
-export default function Navbar({ active = "trade", onNavigate }) {
+export default function Navbar({ active = "trade", onNavigate, user, onSignOut }) {
   const [query, setQuery] = useState("");
   const results = query.trim()
     ? watchlist.filter(({ symbol, name }) => `${symbol} ${name}`.toLowerCase().includes(query.trim().toLowerCase()))
@@ -84,12 +84,32 @@ export default function Navbar({ active = "trade", onNavigate }) {
         <button className="text-slate-300 hover:text-white">
           <Bell size={19} />
         </button>
-        <button className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-500 text-[12px] font-semibold text-white">
-            HK
-          </span>
-          <ChevronDown size={14} className="text-muted" />
-        </button>
+        {user ? (
+          <div className="flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-500 text-[12px] font-semibold text-white">
+              {(user.name || user.email || "U")
+                .split(/[\s.@_-]+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((part) => part[0])
+                .join("")
+                .toUpperCase()}
+            </span>
+            <span className="hidden max-w-36 truncate text-xs text-slate-200 sm:block">{user.name || user.email}</span>
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="rounded-lg px-2 py-1.5 text-xs text-slate-300 hover:bg-surface hover:text-white"
+            >
+              Sign out
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button onClick={() => onNavigate?.("signin")} className="text-xs text-slate-300 hover:text-white">Log in</button>
+            <button onClick={() => onNavigate?.("signup")} className="rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-[#17120d]">Sign up</button>
+          </div>
+        )}
       </div>
     </header>
   );

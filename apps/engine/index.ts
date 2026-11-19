@@ -1,12 +1,17 @@
+import { RedisQueueClient } from "@corvian/common";
 import { connectToQueue, sendOrderStatus } from "./getOrders";
 import { connectToWS, publishMarketData } from "./ws";
 import { addToOrderbook, getOrderbook, matchOrder, normalizeSymbol, shouldRestOrder, type fill, type orderbook, type responseObject } from "./orderbook";
 import { calculateBalanceDelta, validateOrder } from "./tradingRules";
+import { createTradeRecord, enqueueTradeRecord } from "./tradeHistory";
 
 type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number };
 
 const orderQueue = await connectToQueue();
 const marketDataClient = await connectToWS();
+const tradeHistoryRedisUrl = process.env.REDIS_SERVERC || "redis://localhost:6381";
+const tradeHistoryQueue = RedisQueueClient.getInstance(tradeHistoryRedisUrl);
+await tradeHistoryQueue.connectToClient();
 const engineStartedAt = Date.now();
 const candleIntervals: Record<string, number> = {
   "1s": 1,
@@ -23,7 +28,6 @@ const tradesBySymbol = new Map<string, Array<{ price: number; amount: number; ti
 const tradePrunedAt = new Map<string, number>();
 const recentTradesBySymbol = new Map<string, Array<Record<string, string | number>>>();
 const latestTickerBySymbol = new Map<string, Record<string, number | string | boolean>>();
-let tradeSequence = 0;
 
 function candleStorageKey(symbol: string, timeframe: string) {
   return `market:candles:${symbol}:${timeframe}`;
@@ -102,15 +106,18 @@ async function publishBook(symbol: string, book: orderbook, onlyStream?: "orderb
 
 async function publishTrade(symbol: string, order: any, fill: fill) {
   const timestamp = Date.now();
-  const trade = {
-    id: `${order.orderId}-${++tradeSequence}`,
-    symbol,
-    side: order.side.toLowerCase(),
-    price: fill.price,
-    amount: fill.filledQuantity,
-    time: timestamp,
-    timestamp,
-  };
+  const trade = createTradeRecord(order, fill, timestamp);
+
+  for (;;) {
+    try {
+      await enqueueTradeRecord(tradeHistoryQueue, trade);
+      break;
+    } catch (error) {
+      console.error(`Could not enqueue trade ${trade.id} on Redis C; retrying`, error);
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
+    }
+  }
+
   await publishMarketData(marketDataClient, `trades:${symbol}`, trade);
 
   const rollingTrades = tradesBySymbol.get(symbol) ?? [];

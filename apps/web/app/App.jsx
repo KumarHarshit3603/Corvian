@@ -60,6 +60,8 @@ function PageLoader() {
 export default function App() {
   const [page, setPage] = useState("landing");
   const [routeKey, setRouteKey] = useState("");
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const navigate = useCallback((nextPage, searchQuery = "") => {
     const path = pathByPage[nextPage] || "/";
     const url = new URL(path, window.location.origin);
@@ -68,6 +70,44 @@ export default function App() {
     setPage(nextPage in pathByPage ? nextPage : "landing");
     setRouteKey(`${url.pathname}${url.search}`);
     window.scrollTo(0, 0);
+  }, []);
+
+  const handleAuthenticated = useCallback((authenticatedUser) => {
+    setUser(authenticatedUser);
+    navigate("home");
+  }, [navigate]);
+
+  const handleSignOut = useCallback(async () => {
+    try {
+      const response = await fetch("/api/v1/Auth/signout", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      if (!response.ok) return;
+      setUser(null);
+      navigate("landing");
+    } catch {
+      // Keep the current client session if the server could not clear its cookie.
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/v1/Auth/me", { credentials: "same-origin", cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (active) setUser(data?.user ?? null);
+      })
+      .catch(() => {
+        if (active) setUser(null);
+      })
+      .finally(() => {
+        if (active) setAuthReady(true);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -85,18 +125,28 @@ export default function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  const isPublic = ["landing", "signin", "signup"].includes(page);
+  const requiresAuth = ["home", "trade", "wallet", "history", "settings"].includes(page);
+  useEffect(() => {
+    if (authReady && !user && requiresAuth) navigate("signin");
+  }, [authReady, user, requiresAuth, navigate]);
+
   const Page = pageComponents[page] || LandingPage;
   const pageContent = (
     <Suspense key={`${page}:${routeKey}`} fallback={<PageLoader />}>
-      <Page onNavigate={navigate} />
+      <Page onNavigate={navigate} onAuthenticated={handleAuthenticated} />
     </Suspense>
   );
-  const isPublic = ["landing", "signin", "signup"].includes(page);
+
+  if (requiresAuth && (!authReady || !user)) {
+    return <PageLoader />;
+  }
+
   return isPublic ? (
     pageContent
   ) : (
     <div className="flex h-screen min-h-[900px] flex-col overflow-hidden bg-bg">
-      <Navbar active={page} onNavigate={navigate} />
+      <Navbar active={page} onNavigate={navigate} user={user} onSignOut={handleSignOut} />
       <div className="flex min-h-0 flex-1">
         <Sidebar active={page} onNavigate={navigate} />
         <main className="min-w-0 flex-1 overflow-y-auto">{pageContent}</main>

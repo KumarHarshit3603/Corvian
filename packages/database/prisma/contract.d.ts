@@ -18,7 +18,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'dff59a6a00b9a6291647117922d865f8822d1af5331ddbd6604cbf8aac3001fb'>;
+  StorageHashBase<'e438e50a9b1de90eaea1148d2712f056b63c3bc63d6a4ad7aaa72c3083a752e0'>;
 export type ExecutionHash = ExecutionHashBase<string>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
@@ -233,6 +233,22 @@ type DefaultLiteralValue<CodecId extends string, Encoded> = CodecId extends keyo
 
 export type FieldOutputTypes = {
   readonly public: {
+    readonly Trade: {
+      readonly amount: CodecTypes['pg/numeric@1']['output'];
+      readonly buyOrderId: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly makerOrderId: CodecTypes['pg/text@1']['output'];
+      readonly orderType: CodecTypes['pg/text@1']['output'];
+      readonly payload: CodecTypes['pg/json@1']['output'];
+      readonly price: CodecTypes['pg/numeric@1']['output'];
+      readonly quoteAmount: CodecTypes['pg/numeric@1']['output'];
+      readonly sellOrderId: CodecTypes['pg/text@1']['output'];
+      readonly side: CodecTypes['pg/text@1']['output'];
+      readonly symbol: CodecTypes['pg/text@1']['output'];
+      readonly takerOrderId: CodecTypes['pg/text@1']['output'];
+      readonly time: CodecTypes['pg/int8@1']['output'];
+      readonly timestamp: CodecTypes['pg/int8@1']['output'];
+    };
     readonly User: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly email: CodecTypes['pg/text@1']['output'];
@@ -245,6 +261,22 @@ export type FieldOutputTypes = {
 };
 export type FieldInputTypes = {
   readonly public: {
+    readonly Trade: {
+      readonly amount: CodecTypes['pg/numeric@1']['input'];
+      readonly buyOrderId: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly makerOrderId: CodecTypes['pg/text@1']['input'];
+      readonly orderType: CodecTypes['pg/text@1']['input'];
+      readonly payload: CodecTypes['pg/json@1']['input'];
+      readonly price: CodecTypes['pg/numeric@1']['input'];
+      readonly quoteAmount: CodecTypes['pg/numeric@1']['input'];
+      readonly sellOrderId: CodecTypes['pg/text@1']['input'];
+      readonly side: CodecTypes['pg/text@1']['input'];
+      readonly symbol: CodecTypes['pg/text@1']['input'];
+      readonly takerOrderId: CodecTypes['pg/text@1']['input'];
+      readonly time: CodecTypes['pg/int8@1']['input'];
+      readonly timestamp: CodecTypes['pg/int8@1']['input'];
+    };
     readonly User: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly email: CodecTypes['pg/text@1']['input'];
@@ -257,6 +289,22 @@ export type FieldInputTypes = {
 };
 export type StorageColumnTypes = {
   readonly public: {
+    readonly trade_history: {
+      readonly base_amount: CodecTypes['pg/numeric@1']['output'];
+      readonly buy_order_id: CodecTypes['pg/text@1']['output'];
+      readonly maker_order_id: CodecTypes['pg/text@1']['output'];
+      readonly order_type: CodecTypes['pg/text@1']['output'];
+      readonly payload: CodecTypes['pg/json@1']['output'];
+      readonly price: CodecTypes['pg/numeric@1']['output'];
+      readonly quote_amount: CodecTypes['pg/numeric@1']['output'];
+      readonly sell_order_id: CodecTypes['pg/text@1']['output'];
+      readonly side: CodecTypes['pg/text@1']['output'];
+      readonly symbol: CodecTypes['pg/text@1']['output'];
+      readonly taker_order_id: CodecTypes['pg/text@1']['output'];
+      readonly time_ms: CodecTypes['pg/int8@1']['output'];
+      readonly trade_id: CodecTypes['pg/text@1']['output'];
+      readonly trade_time_ms: CodecTypes['pg/int8@1']['output'];
+    };
     readonly User: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly email: CodecTypes['pg/text@1']['output'];
@@ -269,6 +317,22 @@ export type StorageColumnTypes = {
 };
 export type StorageColumnInputTypes = {
   readonly public: {
+    readonly trade_history: {
+      readonly base_amount: CodecTypes['pg/numeric@1']['input'];
+      readonly buy_order_id: CodecTypes['pg/text@1']['input'];
+      readonly maker_order_id: CodecTypes['pg/text@1']['input'];
+      readonly order_type: CodecTypes['pg/text@1']['input'];
+      readonly payload: CodecTypes['pg/json@1']['input'];
+      readonly price: CodecTypes['pg/numeric@1']['input'];
+      readonly quote_amount: CodecTypes['pg/numeric@1']['input'];
+      readonly sell_order_id: CodecTypes['pg/text@1']['input'];
+      readonly side: CodecTypes['pg/text@1']['input'];
+      readonly symbol: CodecTypes['pg/text@1']['input'];
+      readonly taker_order_id: CodecTypes['pg/text@1']['input'];
+      readonly time_ms: CodecTypes['pg/int8@1']['input'];
+      readonly trade_id: CodecTypes['pg/text@1']['input'];
+      readonly trade_time_ms: CodecTypes['pg/int8@1']['input'];
+    };
     readonly User: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly email: CodecTypes['pg/text@1']['input'];
@@ -281,6 +345,23 @@ export type StorageColumnInputTypes = {
 };
 
 export namespace Models {
+  export type public_Trade = {
+    amount: CodecTypes['pg/numeric@1']['output'];
+    buyOrderId: CodecTypes['pg/text@1']['output'];
+    id: CodecTypes['pg/text@1']['output'];
+    makerOrderId: CodecTypes['pg/text@1']['output'];
+    orderType: CodecTypes['pg/text@1']['output'];
+    payload: CodecTypes['pg/json@1']['output'];
+    price: CodecTypes['pg/numeric@1']['output'];
+    quoteAmount: CodecTypes['pg/numeric@1']['output'];
+    sellOrderId: CodecTypes['pg/text@1']['output'];
+    side: CodecTypes['pg/text@1']['output'];
+    symbol: CodecTypes['pg/text@1']['output'];
+    takerOrderId: CodecTypes['pg/text@1']['output'];
+    time: CodecTypes['pg/int8@1']['output'];
+    timestamp: CodecTypes['pg/int8@1']['output'];
+    readonly [RelationKeys]?: never;
+  };
   export type public_User = {
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     email: CodecTypes['pg/text@1']['output'];
@@ -294,6 +375,7 @@ export namespace Models {
 
 export declare const models: {
   public: {
+    Trade: Models.public_Trade;
     User: Models.public_User;
   };
 };
@@ -316,6 +398,105 @@ type ContractBase = Omit<
         readonly kind: 'postgres-schema';
         readonly entries: {
           readonly table: {
+            readonly trade_history: {
+              columns: {
+                readonly base_amount: {
+                  readonly dataType: 'pg/numeric';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly buy_order_id: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly maker_order_id: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly order_type: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly payload: {
+                  readonly dataType: 'pg/json';
+                  readonly codecId: 'pg/json@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly price: {
+                  readonly dataType: 'pg/numeric';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly quote_amount: {
+                  readonly dataType: 'pg/numeric';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly sell_order_id: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly side: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly symbol: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly taker_order_id: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly time_ms: {
+                  readonly dataType: 'pg/int8';
+                  readonly codecId: 'pg/int8@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly trade_id: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly trade_time_ms: {
+                  readonly dataType: 'pg/int8';
+                  readonly codecId: 'pg/int8@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['trade_id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'trade_history_symbol_timestamp_d4cef3e5';
+                  readonly prefix: 'trade_history_symbol_timestamp';
+                  readonly columns: readonly ['symbol', 'trade_time_ms'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [];
+            };
             readonly User: {
               columns: {
                 readonly createdAt: {
@@ -377,11 +558,93 @@ type ContractBase = Omit<
   readonly targetFamily: 'sql';
   readonly roots: {
     readonly User: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+    readonly trade_history: { readonly namespace: 'public' & NamespaceId; readonly model: 'Trade' };
   };
   readonly domain: {
     readonly namespaces: {
       readonly public: {
         readonly models: {
+          readonly Trade: {
+            readonly fields: {
+              readonly amount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/numeric@1' };
+              };
+              readonly buyOrderId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly makerOrderId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly orderType: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly payload: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
+              };
+              readonly price: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/numeric@1' };
+              };
+              readonly quoteAmount: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/numeric@1' };
+              };
+              readonly sellOrderId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly side: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly symbol: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly takerOrderId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly time: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int8@1' };
+              };
+              readonly timestamp: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int8@1' };
+              };
+            };
+            readonly relations: Record<string, never>;
+            readonly storage: {
+              readonly table: 'trade_history';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly amount: { readonly column: 'base_amount' };
+                readonly buyOrderId: { readonly column: 'buy_order_id' };
+                readonly id: { readonly column: 'trade_id' };
+                readonly makerOrderId: { readonly column: 'maker_order_id' };
+                readonly orderType: { readonly column: 'order_type' };
+                readonly payload: { readonly column: 'payload' };
+                readonly price: { readonly column: 'price' };
+                readonly quoteAmount: { readonly column: 'quote_amount' };
+                readonly sellOrderId: { readonly column: 'sell_order_id' };
+                readonly side: { readonly column: 'side' };
+                readonly symbol: { readonly column: 'symbol' };
+                readonly takerOrderId: { readonly column: 'taker_order_id' };
+                readonly time: { readonly column: 'time_ms' };
+                readonly timestamp: { readonly column: 'trade_time_ms' };
+              };
+            };
+          };
           readonly User: {
             readonly fields: {
               readonly createdAt: {

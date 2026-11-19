@@ -250,10 +250,57 @@ export function LandingPageContent({ onNavigate }) {
   );
 }
 
-export function AuthPageContent({ mode, onNavigate }) {
+export function AuthPageContent({ mode, onNavigate, onAuthenticated }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState(null);
   const signup = mode === "signup";
+
+  async function submitCredentials(event) {
+    event.preventDefault();
+    setFeedback(null);
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`/api/v1/Auth/${signup ? "signup" : "signin"}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(form),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.user) {
+        const details = Array.isArray(result?.errors)
+          ? result.errors.map(({ field, message }) => {
+              const label = { name: "Name", email: "Email", password: "Password" }[field] || "Form";
+              return `${label}: ${message}`;
+            })
+          : [];
+        setFeedback({
+          type: "error",
+          message: result?.message || (signup
+            ? "We couldn't create your account. Check your details and try again."
+            : "We couldn't sign you in. Check your email and password, then try again."),
+          details,
+        });
+        return;
+      }
+
+      setFeedback({ type: "success", message: signup ? "Account created. Signing you in…" : "Signed in. Loading your account…" });
+      onAuthenticated?.(result.user);
+    } catch {
+      setFeedback({
+        type: "error",
+        message: signup
+          ? "We couldn't reach the server to create your account. Check your connection and try again; your details have not been submitted."
+          : "We couldn't reach the sign-in service. Check your connection and try again. Your account has not been changed.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-bg">
       <PublicNav onNavigate={onNavigate} />
@@ -273,11 +320,9 @@ export function AuthPageContent({ mode, onNavigate }) {
             </p>
           </div>
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setSubmitted(true);
-            }}
+            onSubmit={submitCredentials}
             className="rounded-2xl border border-line bg-panel p-6 sm:p-8"
+            aria-busy={isSubmitting}
           >
             {signup && (
               <label className="mb-4 block text-xs font-medium text-slate-300">
@@ -285,6 +330,9 @@ export function AuthPageContent({ mode, onNavigate }) {
                 <input
                   required
                   autoComplete="name"
+                  maxLength={80}
+                  value={form.name}
+                  onChange={(event) => setForm({ ...form, name: event.target.value })}
                   placeholder="Your name"
                   className="mt-2 h-11 w-full rounded-lg border border-line bg-bg px-3 text-sm text-white outline-none placeholder:text-muted focus:border-brand"
                 />
@@ -301,6 +349,8 @@ export function AuthPageContent({ mode, onNavigate }) {
                   required
                   type="email"
                   autoComplete="email"
+                  value={form.email}
+                  onChange={(event) => setForm({ ...form, email: event.target.value })}
                   placeholder="you@example.com"
                   className="h-11 w-full rounded-lg border border-line bg-bg pl-10 pr-3 text-sm text-white outline-none placeholder:text-muted focus:border-brand"
                 />
@@ -311,8 +361,11 @@ export function AuthPageContent({ mode, onNavigate }) {
               <input
                 required
                 minLength={8}
+                maxLength={72}
                 type={showPassword ? "text" : "password"}
                 autoComplete={signup ? "new-password" : "current-password"}
+                value={form.password}
+                onChange={(event) => setForm({ ...form, password: event.target.value })}
                 placeholder={
                   signup ? "At least 8 characters" : "Enter your password"
                 }
@@ -329,15 +382,6 @@ export function AuthPageContent({ mode, onNavigate }) {
                 />{" "}
                 Show password
               </label>
-              {!signup && (
-                <button
-                  type="button"
-                  onClick={() => setSubmitted(true)}
-                  className="text-brand hover:text-orange-300"
-                >
-                  Forgot password?
-                </button>
-              )}
             </div>
             {signup && (
               <label className="mb-5 flex items-start gap-2 text-xs leading-5 text-muted">
@@ -346,25 +390,28 @@ export function AuthPageContent({ mode, onNavigate }) {
                   type="checkbox"
                   className="mt-1 accent-[#f59a3d]"
                 />
-                I agree to the{" "}
-                <button
-                  type="button"
-                  onClick={() => setSubmitted(true)}
-                  className="text-brand"
-                >
-                  Terms of Service
-                </button>{" "}
-                and acknowledge the privacy notice.
+                I agree to the Terms of Service and acknowledge the privacy notice.
               </label>
             )}
-            <button className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand text-sm font-semibold text-[#17120d] hover:bg-orange-400">
-              {signup ? "Create account" : "Sign in"}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand text-sm font-semibold text-[#17120d] hover:bg-orange-400 disabled:cursor-wait disabled:opacity-60"
+            >
+              {isSubmitting ? "Please wait…" : signup ? "Create account" : "Sign in"}
               <ArrowRight size={16} />
             </button>
-            {submitted && (
-              <div className="mt-4 rounded-lg border border-brand/20 bg-brand/5 p-3 text-xs text-brand">
-                Demo form submitted. Connect an authentication service to enable
-                accounts.
+            {feedback && (
+              <div
+                role={feedback.type === "error" ? "alert" : "status"}
+                className={`mt-4 rounded-lg border p-3 text-xs ${feedback.type === "error" ? "border-red-500/20 bg-red-500/5 text-red-300" : "border-brand/20 bg-brand/5 text-brand"}`}
+              >
+                {feedback.message}
+                {feedback.details?.length > 0 && (
+                  <ul className="mt-2 list-inside list-disc space-y-1">
+                    {feedback.details.map((detail, index) => <li key={`${index}:${detail}`}>{detail}</li>)}
+                  </ul>
+                )}
               </div>
             )}
             <div className="mt-5 flex items-center gap-3 text-[10px] uppercase tracking-widest text-muted">

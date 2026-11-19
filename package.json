@@ -6,16 +6,18 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "dev:all-except-market-maker": "turbo run dev --filter=!market-maker",
+    "process:trades": "npm run start --workspace=database-processor",
+    "test:integration": "npm run test --workspace=engine -- trade-pipeline.integration.test.ts",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "contract:emit": "prisma contract emit"
+    "contract:emit": "npm run contract:emit --workspace=@corvian/database"
   },
   "devDependencies": {
     "@prisma/cli-engine": "^0.7.0",
     "@types/node": "^26.6.5",
     "prettier": "3.9.6",
-    "prisma": "^8.0.0-rc.23",
+    "prisma": "8.0.0-rc.23",
     "turbo": "^2.11.8",
     "typescript": "7.0.2"
   },

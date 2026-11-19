@@ -1,0 +1,17 @@
+{
+  "name": "database-processor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts",
+    "contract:emit": "npm run contract:emit --workspace=@corvian/database"
+  },
+  "dependencies": {
+    "@corvian/common": "*",
+    "@corvian/database": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15"
+  }
+}

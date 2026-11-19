@@ -4,21 +4,21 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
     "check-types": "next typegen && tsc --noEmit",
-    "contract:emit": "prisma contract emit"
+    "prebuild": "npm run contract:emit --workspace=@corvian/database",
+    "contract:emit": "npm run contract:emit --workspace=@corvian/database"
   },
   "dependencies": {
     "@corvian/common": "*",
-    "@prisma/orm-postgres": "^8.0.0-rc.18",
+    "@corvian/database": "*",
     "@repo/ui": "*",
     "@tailwindcss/postcss": "^4.3.3",
     "axios": "^1.20.0",
     "bcryptjs": "^3.0.3",
-    "dotenv": "^18.0.8",
     "lightweight-charts": "^5.2.1",
     "lucide-react": "^1.72.0",
     "next": "16.3.8",
@@ -31,7 +31,6 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@prisma/cli-engine": "^0.7.0",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@types/bcryptjs": "^2.4.6",
@@ -39,7 +38,6 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "eslint": "10.9.1",
-    "prisma": "^8.0.0-rc.23",
     "typescript": "7.0.2"
   }
 }

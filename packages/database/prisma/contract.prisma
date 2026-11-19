@@ -1,0 +1,30 @@
+// use prisma-8
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String?
+  name      String?
+  createdAt TimestamptzString @default(now())
+  password  String
+}
+
+model Trade {
+  id           String  @id @map("trade_id")
+  symbol       String
+  side         String
+  orderType    String  @map("order_type")
+  takerOrderId String  @map("taker_order_id")
+  makerOrderId String  @map("maker_order_id")
+  buyOrderId   String  @map("buy_order_id")
+  sellOrderId  String  @map("sell_order_id")
+  price        Decimal
+  amount       Decimal @map("base_amount")
+  quoteAmount  Decimal @map("quote_amount")
+  time         BigInt  @map("time_ms")
+  timestamp    BigInt  @map("trade_time_ms")
+  payload      Json
+
+  @@index([symbol, timestamp], name: "trade_history_symbol_timestamp")
+  @@map("trade_history")
+}

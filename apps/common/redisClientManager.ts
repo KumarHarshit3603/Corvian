@@ -1,5 +1,7 @@
 import {createClient , RedisClientType} from 'redis'
 
+export type RedisQueueMessage = { key: string; element: string };
+
 export class RedisQueueClient{
     private static instances : Map<string,RedisQueueClient> = new Map<string,RedisQueueClient>();
     public client : RedisClientType;
@@ -28,11 +30,28 @@ export class RedisQueueClient{
         }
         return this.connection;
     }
-    public async sendDataToQueue(data: any){
-            return await  this.client.lPush("demodata",JSON.stringify(data));
+    public async sendDataToQueue(data: unknown, queueName = "demodata") {
+        return await this.client.lPush(queueName, JSON.stringify(data));
     }
-    public async getDataFromQueue(){
-            return await this.client.brPop("demodata",0);
+
+    public async getDataFromQueue(queueName = "demodata"): Promise<RedisQueueMessage | null> {
+        return await this.client.brPop(queueName, 0);
+    }
+
+    public async getPendingQueueData(queueName: string): Promise<RedisQueueMessage | null> {
+        // Producers LPUSH and claims use RPOPLPUSH, so the oldest pending item
+        // sits at the right side of the processing list.
+        const element = await this.client.lIndex(queueName, -1);
+        return element === null ? null : { key: queueName, element };
+    }
+
+    public async claimDataFromQueue(sourceQueue: string, processingQueue: string): Promise<RedisQueueMessage | null> {
+        const element = await this.client.brPopLPush(sourceQueue, processingQueue, 1);
+        return element === null ? null : { key: processingQueue, element };
+    }
+
+    public async acknowledgeQueueData(queueName: string, element: string): Promise<number> {
+        return await this.client.lRem(queueName, 1, element);
     }
 
 

@@ -47,8 +47,8 @@ describe("engine orderbook", () => {
     const fills = matchOrder(book, incoming);
 
     expect(fills).toEqual([
-      { orderId: "buyer", filledQuantity: 2, price: 101 },
-      { orderId: "buyer", filledQuantity: 2, price: 102 },
+      { orderId: "buyer", makerOrderId: "ask-101", filledQuantity: 2, price: 101 },
+      { orderId: "buyer", makerOrderId: "ask-102", filledQuantity: 2, price: 102 },
     ]);
     expect(incoming.quantity).toBe(0);
     expect(book.asks).toEqual([
@@ -76,8 +76,8 @@ describe("engine orderbook", () => {
     const fills = matchOrder(book, incoming);
 
     expect(fills).toEqual([
-      { orderId: "seller", filledQuantity: 1, price: 99 },
-      { orderId: "seller", filledQuantity: 1.5, price: 98 },
+      { orderId: "seller", makerOrderId: "bid-99", filledQuantity: 1, price: 99 },
+      { orderId: "seller", makerOrderId: "bid-98", filledQuantity: 1.5, price: 98 },
     ]);
     expect(incoming.quantity).toBe(0);
     expect(book.bids).toEqual([makeOrder({ orderId: "bid-98", price: 98, quantity: 0.5 })]);
@@ -89,7 +89,7 @@ describe("engine orderbook", () => {
     const incoming = makeOrder({ orderId: "buyer", price: 100, quantity: 1 });
 
     expect(matchOrder(book, incoming)).toEqual([
-      { orderId: "buyer", filledQuantity: 1, price: 100 },
+      { orderId: "buyer", makerOrderId: "ask", filledQuantity: 1, price: 100 },
     ]);
     expect(book.asks).toHaveLength(0);
   });
@@ -102,8 +102,8 @@ describe("engine orderbook", () => {
     const incoming = makeOrder({ orderId: "seller", side: "SELL", price: 100, quantity: 3 });
 
     expect(matchOrder(book, incoming)).toEqual([
-      { orderId: "seller", filledQuantity: 1, price: 102 },
-      { orderId: "seller", filledQuantity: 1, price: 100 },
+      { orderId: "seller", makerOrderId: "bid-102", filledQuantity: 1, price: 102 },
+      { orderId: "seller", makerOrderId: "bid-100", filledQuantity: 1, price: 100 },
     ]);
     expect(incoming.quantity).toBe(1);
     expect(book.bids.map(({ price }) => price)).toEqual([99]);
@@ -116,8 +116,8 @@ describe("engine orderbook", () => {
     const incoming = makeOrder({ orderId: "buyer", price: 101, quantity: 1.5 });
 
     expect(matchOrder(book, incoming)).toEqual([
-      { orderId: "buyer", filledQuantity: 1, price: 101 },
-      { orderId: "buyer", filledQuantity: 0.5, price: 101 },
+      { orderId: "buyer", makerOrderId: "first", filledQuantity: 1, price: 101 },
+      { orderId: "buyer", makerOrderId: "second", filledQuantity: 0.5, price: 101 },
     ]);
     expect(book.asks).toEqual([
       makeOrder({ orderId: "second", side: "SELL", price: 101, quantity: 0.5 }),
@@ -130,7 +130,7 @@ describe("engine orderbook", () => {
     const incoming = makeOrder({ orderId: "buyer", price: 100, quantity: 5 });
 
     expect(matchOrder(book, incoming)).toEqual([
-      { orderId: "buyer", filledQuantity: 2, price: 100 },
+      { orderId: "buyer", makerOrderId: "ask", filledQuantity: 2, price: 100 },
     ]);
     expect(incoming.quantity).toBe(3);
     expect(book.asks).toHaveLength(0);
@@ -194,7 +194,7 @@ describe("engine orderbook", () => {
     const fills = matchOrder(book, incoming);
     if (shouldRestOrder(incoming, incoming.quantity)) addToOrderbook(book, incoming);
 
-    expect(fills).toEqual([{ orderId: "ioc-buyer", filledQuantity: 1, price: 100 }]);
+    expect(fills).toEqual([{ orderId: "ioc-buyer", makerOrderId: "ask", filledQuantity: 1, price: 100 }]);
     expect(incoming.quantity).toBe(1);
     expect(book.bids).toEqual([]);
   });
@@ -269,8 +269,8 @@ describe("engine order validation", () => {
 
 describe("fill balance calculations", () => {
   const fills = [
-    { orderId: "order-1", filledQuantity: 2, price: 100 },
-    { orderId: "order-1", filledQuantity: 1, price: 110 },
+    { orderId: "order-1", makerOrderId: "maker-1", filledQuantity: 2, price: 100 },
+    { orderId: "order-1", makerOrderId: "maker-2", filledQuantity: 1, price: 110 },
   ];
 
   it("debits quote and credits base for buy fills", () => {
