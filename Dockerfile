@@ -49,7 +49,7 @@ COPY packages/typescript-config/package.json packages/typescript-config/
 COPY packages/ui/package.json packages/ui/
 
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --ignore-scripts --no-audit --no-fund
+    npm ci  --no-audit --no-fund
 
 # ------------------------------------------------------------
 # Bundle Node services with esbuild
@@ -77,7 +77,6 @@ RUN set -eu; \
 # ------------------------------------------------------------
 FROM deps AS build-web
 
-ARG NEXT_PUBLIC_MARKET_WS_URL=ws://localhost:5000
 
 ENV NEXT_PUBLIC_MARKET_WS_URL=${NEXT_PUBLIC_MARKET_WS_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -92,9 +91,6 @@ RUN set -eu; \
       "@next/swc-linux-${a}-musl@${v}" \
     || echo "WARN: SWC installation failed"
 
-# Enable Next standalone output
-RUN sed -i 's/reactStrictMode/output: "standalone", reactStrictMode/' apps/web/next.config.js \
-    && grep -q 'output: "standalone"' apps/web/next.config.js
 
 # Build Next.js
 RUN DATABASE_URL=postgresql://build:build@localhost:5432/build \
@@ -169,5 +165,6 @@ CMD ["node", "apps/web/server.js"]
 FROM deps AS migrate
 
 COPY packages/database packages/database
+COPY packages/database/prisma packages/database/prisma
 
 CMD ["npm", "run", "db:migrate", "--workspace=@corvian/database"]
