@@ -38,7 +38,7 @@ yarn-error.log*
 *.pem
 node_modules/
 dist/
-
+.env.k8s
 
 #others
 ./apps/web/prisma/ca.cert

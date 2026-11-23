@@ -46,6 +46,7 @@ COPY packages/database/package.json        packages/database/
 COPY packages/eslint-config/package.json   packages/eslint-config/
 COPY packages/typescript-config/package.json packages/typescript-config/
 COPY packages/ui/package.json              packages/ui/
+COPY certs/ca.pem /app/certs/ca.pem
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --ignore-scripts --no-audit --no-fund
 

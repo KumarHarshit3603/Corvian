@@ -19,6 +19,10 @@
 #                                 (default ws://localhost:5000). Baked in at build time,
 #                                 so rebuild `web` after changing it.
 #
+# Registry (docker compose build && docker compose push):
+#   Built images are tagged  <REGISTRY>/myprojects/corvian:<service>-<TAG>
+#   REGISTRY defaults to your ECR registry; TAG defaults to "latest". Both can be set in .env.
+
 # Files mounted from your PC:
 #   ./certs/ca.pem                DB CA certificate, needed when DATABASE_URL contains
 #                                 sslrootcert=../../certs/ca.pem. It must exist as a FILE
@@ -67,6 +71,7 @@ services:
 
   # one-shot: applies migrations, then exits (idempotent, runs on every `up`)
   migrate:
+    image: ${REGISTRY:-646519967137.dkr.ecr.ap-southeast-2.amazonaws.com}/myprojects/corvian:migrate-${TAG:-latest}
     build: { context: ., target: migrate }
     environment:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
@@ -78,6 +83,7 @@ services:
   # ---- application services ----
   engine:    # keep at ONE replica: the order books live in its memory
     <<: *node
+    image: ${REGISTRY:-646519967137.dkr.ecr.ap-southeast-2.amazonaws.com}/myprojects/corvian:engine-${TAG:-latest}
     build: { context: ., target: engine }
     environment:
       REDIS_SERVERA: redis://redis-a:6379
@@ -90,6 +96,7 @@ services:
 
   ws-server:
     <<: *node
+    image: ${REGISTRY:-646519967137.dkr.ecr.ap-southeast-2.amazonaws.com}/myprojects/corvian:ws-server-${TAG:-latest}
     build: { context: ., target: ws-server }
     environment:
       PORT: "5000"
@@ -105,6 +112,7 @@ services:
 
   database-processor:
     <<: *node
+    image: ${REGISTRY:-646519967137.dkr.ecr.ap-southeast-2.amazonaws.com}/myprojects/corvian:database-processor-${TAG:-latest}
     build: { context: ., target: database-processor }
     working_dir: /app/apps/database-processor   # so ../../certs/ca.pem -> /app/certs/ca.pem
     command: ["node", "/app/database-processor.mjs"]
@@ -119,6 +127,7 @@ services:
 
   web:
     <<: *node
+    image: ${REGISTRY:-646519967137.dkr.ecr.ap-southeast-2.amazonaws.com}/myprojects/corvian:web-${TAG:-latest}
     build:
       context: .
       target: web

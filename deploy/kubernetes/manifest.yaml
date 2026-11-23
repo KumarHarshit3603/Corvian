@@ -1,0 +1,468 @@
+
+# Corvian EKS deployment
+# Secrets are created separately using kubectl from .env.k8s.
+# Assumes external PostgreSQL; Redis runs in-cluster.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: corvian
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: corvian-config
+  namespace: corvian
+data:
+  REDIS_SERVERA: "redis://redis-a:6379"
+  REDIS_SERVER1: "redis://redis-a:6379"
+  REDIS_SERVERB: "redis://redis-b:6379"
+  REDIS_SERVERC: "redis://redis-c:6379"
+  PORT: "5000"
+  MARKET_MAKER_SYMBOLS: "BTC/USDT:67000:0.1,ETH/USDT:2470:0.01,SOL/USDT:162:0.01"
+  MARKET_MAKER_ORDERS_PER_SIDE: "10000"
+  MARKET_MAKER_FLOW_SOURCE: "binance"
+  MARKET_MAKER_MIN_SPREAD_TICKS: "1"
+  MARKET_MAKER_QUOTE_SCALE_BPS: "10"
+  MARKET_MAKER_MIN_ORDER_NOTIONAL: "100"
+  MARKET_MAKER_MAX_ORDER_NOTIONAL: "2000"
+  MARKET_MAKER_MIN_TRADE_NOTIONAL: "5000"
+  MARKET_MAKER_MAX_TRADE_NOTIONAL: "30000"
+  MARKET_MAKER_REPRICE_INTERVAL_MS: "2000"
+  MARKET_MAKER_REPRICE_FRACTION: "0.05"
+  MARKET_MAKER_TRADE_INTERVAL_MS: "250"
+---
+# Redis A: order queue and order-status pub/sub
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-a
+  namespace: corvian
+spec:
+  serviceName: redis-a
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-a
+  template:
+    metadata:
+      labels:
+        app: redis-a
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args: ["redis-server", "--appendonly", "yes", "--save", ""]
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-a
+  namespace: corvian
+spec:
+  selector:
+    app: redis-a
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+---
+# Redis B: market-data pub/sub and candle history
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-b
+  namespace: corvian
+spec:
+  serviceName: redis-b
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-b
+  template:
+    metadata:
+      labels:
+        app: redis-b
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args: ["redis-server", "--appendonly", "yes", "--save", ""]
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-b
+  namespace: corvian
+spec:
+  selector:
+    app: redis-b
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+---
+# Redis C: trade-history queue
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-c
+  namespace: corvian
+spec:
+  serviceName: redis-c
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-c
+  template:
+    metadata:
+      labels:
+        app: redis-c
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args: ["redis-server", "--appendonly", "yes", "--save", ""]
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-c
+  namespace: corvian
+spec:
+  selector:
+    app: redis-c
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+---
+# One-time database migration job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: corvian-migrate
+  namespace: corvian
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: corvian-migrate
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: 646519967137.dkr.ecr.ap-southeast-2.amazonaws.com/myprojects/corvian:migrate-latest
+          imagePullPolicy: IfNotPresent
+          workingDir: /app/packages/database
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: corvian-secrets
+                  key: DATABASE_URL
+---
+# Order engine: intentionally single replica (orderbooks are in-memory)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: engine
+  namespace: corvian
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: engine
+  template:
+    metadata:
+      labels:
+        app: engine
+    spec:
+      containers:
+        - name: engine
+          image: 646519967137.dkr.ecr.ap-southeast-2.amazonaws.com/myprojects/corvian:engine-latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: corvian-config
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database-processor
+  namespace: corvian
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database-processor
+  template:
+    metadata:
+      labels:
+        app: database-processor
+    spec:
+      containers:
+        - name: processor
+          image: 646519967137.dkr.ecr.ap-southeast-2.amazonaws.com/myprojects/corvian:database-processor-latest
+          imagePullPolicy: IfNotPresent
+          workingDir: /app/apps/database-processor
+          envFrom:
+            - configMapRef:
+                name: corvian-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: corvian-secrets
+                  key: DATABASE_URL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: market-maker
+  namespace: corvian
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: market-maker
+  template:
+    metadata:
+      labels:
+        app: market-maker
+    spec:
+      containers:
+        - name: market-maker
+          image: 646519967137.dkr.ecr.ap-southeast-2.amazonaws.com/myprojects/corvian:market-maker-latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: corvian-config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+# Web app. NEXT_PUBLIC_MARKET_WS_URL is baked into the frontend image at build time.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: corvian
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: 646519967137.dkr.ecr.ap-southeast-2.amazonaws.com/myprojects/corvian:web-latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: corvian-config
+          env:
+            - name: AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: corvian-secrets
+                  key: AUTH_SECRET
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: corvian-secrets
+                  key: DATABASE_URL
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: corvian
+spec:
+  type: LoadBalancer
+  selector:
+    app: web
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+---
+# WebSocket relay exposed separately.
+# Configure NEXT_PUBLIC_MARKET_WS_URL at frontend build time.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ws-server
+  namespace: corvian
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ws-server
+  template:
+    metadata:
+      labels:
+        app: ws-server
+    spec:
+      containers:
+        - name: ws-server
+          image: 646519967137.dkr.ecr.ap-southeast-2.amazonaws.com/myprojects/corvian:ws-server
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: corvian-config
+          ports:
+            - name: websocket
+              containerPort: 5000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ws-server
+  namespace: corvian
+spec:
+  type: LoadBalancer
+  selector:
+    app: ws-server
+  ports:
+    - name: websocket
+      port: 80
+      targetPort: 5000
