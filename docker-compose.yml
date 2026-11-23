@@ -1,26 +1,145 @@
+# Corvian – currency exchange stack (matches the architecture diagram)
+#
+#   browser ─► web (api) ─► redis-a (queue) ─► engine ─► redis-b (pub/sub) ─► ws-server ─► browser
+#                  ▲                              │
+#                  └──────── redis-a (pub/sub) ◄──┤
+#                                                 └► redis-c (queue) ─► database-processor ─► db
+#
+# Usage:
+#   cp .env.example .env     # then set AUTH_SECRET and DATABASE_URL (see below)
+#   docker compose up -d --build --remove-orphans
+#
+# Variables read from ./.env (compose loads it automatically):
+#   AUTH_SECRET                   required, >= 32 bytes:
+#                                 node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
+#   DATABASE_URL                  required, your external Postgres connection string
+#                                 (not localhost – containers can't see your host's localhost;
+#                                 use host.docker.internal for a DB running on your PC)
+#   NEXT_PUBLIC_MARKET_WS_URL     optional, URL the BROWSER uses to reach ws-server
+#                                 (default ws://localhost:5000). Baked in at build time,
+#                                 so rebuild `web` after changing it.
+#
+# Files mounted from your PC:
+#   ./certs/ca.pem                DB CA certificate, needed when DATABASE_URL contains
+#                                 sslrootcert=../../certs/ca.pem. It must exist as a FILE
+#                                 (if missing, Docker creates a folder with that name).
+
+name: corvian
+
+x-redis: &redis
+  image: redis:7-alpine
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "redis-cli", "ping"]
+    interval: 5s
+    timeout: 3s
+    retries: 10
+  networks: [backend]
+
+x-node: &node
+  restart: unless-stopped
+  init: true            # node as PID 1 would otherwise ignore SIGTERM
+  networks: [backend]
+
+# The relative path in DATABASE_URL (../../certs/ca.pem) resolves to this file
+# for migrate (cwd /app/packages/database), web (Next chdirs to /app/apps/web)
+# and database-processor (working_dir below).
+x-db-cert: &db-cert ./certs/ca.pem:/app/certs/ca.pem:ro
 
 services:
-  redis1:
-    image: redis:latest
-    container_name: redis1
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
-    restart: unless-stopped
+  # ---- three separate Redis servers (internal only, no published ports) ----
+  redis-a:   # web -> engine order queue  +  engine -> web "orderStatus" pub/sub
+    <<: *redis
+    command: ["redis-server", "--appendonly", "yes", "--save", ""]
+    volumes: [redis-a-data:/data]
 
-  redis2:
-    image: redis:latest
-    container_name: redis2
-    ports:
-      - "6380:6379"
-    command: redis-server --appendonly yes
-    restart: unless-stopped
+  redis-b:   # engine -> ws-server market-data pub/sub (+ candle history lists)
+    <<: *redis
+    command: ["redis-server", "--appendonly", "yes", "--save", ""]
+    volumes: [redis-b-data:/data]
 
-  redis3:
-    image: redis:latest
-    container_name: redis3
-    ports:
-      - "6381:6379"
-    command: redis-server --appendonly yes
-    restart: unless-stopped
+  redis-c:   # engine -> database-processor trade-history queue
+    <<: *redis
+    command: ["redis-server", "--appendonly", "yes", "--save", ""]
+    volumes: [redis-c-data:/data]
 
+  # ---- database: external (set DATABASE_URL in .env) ----
+
+  # one-shot: applies migrations, then exits (idempotent, runs on every `up`)
+  migrate:
+    build: { context: ., target: migrate }
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+    volumes:
+      - *db-cert
+    restart: "no"
+    networks: [backend]
+
+  # ---- application services ----
+  engine:    # keep at ONE replica: the order books live in its memory
+    <<: *node
+    build: { context: ., target: engine }
+    environment:
+      REDIS_SERVERA: redis://redis-a:6379
+      REDIS_SERVERB: redis://redis-b:6379
+      REDIS_SERVERC: redis://redis-c:6379
+    depends_on:
+      redis-a: { condition: service_healthy }
+      redis-b: { condition: service_healthy }
+      redis-c: { condition: service_healthy }
+
+  ws-server:
+    <<: *node
+    build: { context: ., target: ws-server }
+    environment:
+      PORT: "5000"
+      REDIS_SERVERB: redis://redis-b:6379
+    ports: ["5000:5000"]
+    depends_on:
+      redis-b: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  database-processor:
+    <<: *node
+    build: { context: ., target: database-processor }
+    working_dir: /app/apps/database-processor   # so ../../certs/ca.pem -> /app/certs/ca.pem
+    command: ["node", "/app/database-processor.mjs"]
+    environment:
+      REDIS_SERVERC: redis://redis-c:6379
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+    volumes:
+      - *db-cert
+    depends_on:
+      redis-c: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+
+  web:
+    <<: *node
+    build:
+      context: .
+      target: web
+      args:
+        NEXT_PUBLIC_MARKET_WS_URL: ${NEXT_PUBLIC_MARKET_WS_URL:-ws://localhost:5000}
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET (>= 32 bytes) in .env}
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+      REDIS_SERVER1: redis://redis-a:6379   # name used by createOrder route
+      REDIS_SERVERA: redis://redis-a:6379
+    volumes:
+      - *db-cert
+    ports: ["3000:3000"]
+    depends_on:
+      redis-a: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+
+networks:
+  backend:
+
+volumes:
+  redis-a-data:
+  redis-b-data:
+  redis-c-data:

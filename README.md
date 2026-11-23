@@ -1,5 +1,36 @@
 # Turborepo starter
 
+## Run with Docker Compose
+
+The repository includes container images for the web app, WebSocket server,
+engine, database processor, and market maker. Compose also starts the three
+Redis instances used by those processes. PostgreSQL remains an external service;
+set `DATABASE_URL` to a reachable PostgreSQL connection string.
+
+1. Copy `.env.example` to `.env` and set `DATABASE_URL` and a production-safe
+   `AUTH_SECRET` (generate one with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"`).
+2. Set `NEXT_PUBLIC_MARKET_WS_URL` in `.env` to the browser-reachable WebSocket
+   URL. It is embedded in the web bundle during image build; the default is
+   `ws://localhost:5000` for local use.
+3. Build and start the stack with `docker compose up --build`.
+
+The web app is available at `http://localhost:3000`. Redis data is kept in
+named Docker volumes. Use `docker compose down` to stop the stack; `docker
+compose down -v` also removes Redis data.
+
+Each app image is built from the repository root with the shared `Dockerfile`.
+For EKS, build and push one image per app to ECR, passing the matching service
+name as `SERVICE`. For example:
+
+```sh
+docker build --build-arg SERVICE=engine -t <ecr-uri>/corvian-engine:<tag> .
+```
+
+Supply runtime configuration through
+Kubernetes Secrets and ConfigMaps, use managed Redis/PostgreSQL endpoints, and
+set the web image build argument `NEXT_PUBLIC_MARKET_WS_URL` to the public
+WebSocket endpoint. Do not bake credentials into image build arguments.
+
 This Turborepo starter is maintained by the Turborepo core team.
 
 ## Using this example

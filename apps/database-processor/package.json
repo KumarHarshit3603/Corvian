@@ -9,9 +9,7 @@
   },
   "dependencies": {
     "@corvian/common": "*",
-    "@corvian/database": "*"
-  },
-  "devDependencies": {
+    "@corvian/database": "*",
     "tsx": "^4.23.15"
   }
 }

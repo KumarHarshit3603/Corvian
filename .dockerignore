@@ -1,0 +1,17 @@
+.git
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/coverage
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+**/.agents
+**/.claude
+**/.cursor
+**/.devin
+**/*.md
+Dockerfile
+docker-compose.yml
