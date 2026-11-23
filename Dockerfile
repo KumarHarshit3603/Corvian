@@ -88,8 +88,7 @@ RUN set -eu; \
     a="$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')"; \
     v="$(node -p "require('next/package.json').version")"; \
     npm install --no-save --ignore-scripts --no-audit --no-fund \
-      "@next/swc-linux-${a}-musl@${v}" \
-    || echo "WARN: SWC installation failed"
+      "@next/swc-linux-${a}-musl@${v}" 
 
 
 # Build Next.js

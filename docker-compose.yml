@@ -160,7 +160,7 @@ services:
       context: .
       target: web
       args:
-        NEXT_PUBLIC_MARKET_WS_URL: ${NEXT_PUBLIC_MARKET_WS_URL}
+        NEXT_PUBLIC_MARKET_WS_URL: ${NEXT_PUBLIC_MARKET_WS_URL:?NEXT_PUBLIC_MARKET_WS_URL must be set}
     environment:
       PORT: "3000"
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET must be set}
