@@ -77,7 +77,7 @@ RUN set -eu; \
 # ------------------------------------------------------------
 FROM deps AS build-web
 
-
+ARG NEXT_PUBLIC_MARKET_WS_URL
 ENV NEXT_PUBLIC_MARKET_WS_URL=${NEXT_PUBLIC_MARKET_WS_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 
