@@ -24,11 +24,11 @@ x-node: &node
   networks:
     - backend
 
-# ------------------------------------------------------------
-# Redis services
-# ------------------------------------------------------------
 services:
 
+  # ----------------------------------------------------------
+  # Redis services
+  # ----------------------------------------------------------
   redis-a:
     <<: *redis
     command: ["redis-server", "--appendonly", "yes", "--save", ""]
@@ -47,25 +47,9 @@ services:
     volumes:
       - redis-c-data:/data
 
-# ------------------------------------------------------------
-# Database migration
-# ------------------------------------------------------------
-  migrate:
-    image: ${REGISTRY:-646519967137.dkr.ecr.ap-southeast-2.amazonaws.com}/myprojects/corvian:migrate-${TAG:-latest}
-    build:
-      context: .
-      target: migrate
-    environment:
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set}
-    volumes:
-      - ./certs/ca.pem:/app/certs/ca.pem:ro
-    restart: "no"
-    networks:
-      - backend
-
-# ------------------------------------------------------------
-# Matching engine
-# ------------------------------------------------------------
+  # ----------------------------------------------------------
+  # Matching engine
+  # ----------------------------------------------------------
   engine:
     <<: *node
     image: ${REGISTRY:-646519967137.dkr.ecr.ap-southeast-2.amazonaws.com}/myprojects/corvian:engine-${TAG:-latest}
@@ -84,9 +68,9 @@ services:
       redis-c:
         condition: service_healthy
 
-# ------------------------------------------------------------
-# WebSocket server
-# ------------------------------------------------------------
+  # ----------------------------------------------------------
+  # WebSocket server
+  # ----------------------------------------------------------
   ws-server:
     <<: *node
     image: ${REGISTRY:-646519967137.dkr.ecr.ap-southeast-2.amazonaws.com}/myprojects/corvian:ws-server-${TAG:-latest}
@@ -107,9 +91,9 @@ services:
       timeout: 3s
       retries: 5
 
-# ------------------------------------------------------------
-# Database processor
-# ------------------------------------------------------------
+  # ----------------------------------------------------------
+  # Database processor
+  # ----------------------------------------------------------
   database-processor:
     <<: *node
     image: ${REGISTRY:-646519967137.dkr.ecr.ap-southeast-2.amazonaws.com}/myprojects/corvian:database-processor-${TAG:-latest}
@@ -126,12 +110,10 @@ services:
     depends_on:
       redis-c:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
 
-# ------------------------------------------------------------
-# Market maker
-# ------------------------------------------------------------
+  # ----------------------------------------------------------
+  # Market maker
+  # ----------------------------------------------------------
   market-maker:
     <<: *node
     image: ${REGISTRY:-646519967137.dkr.ecr.ap-southeast-2.amazonaws.com}/myprojects/corvian:market-maker-${TAG:-latest}
@@ -150,9 +132,9 @@ services:
       redis-c:
         condition: service_healthy
 
-# ------------------------------------------------------------
-# Next.js web application
-# ------------------------------------------------------------
+  # ----------------------------------------------------------
+  # Next.js web application
+  # ----------------------------------------------------------
   web:
     <<: *node
     image: ${REGISTRY:-646519967137.dkr.ecr.ap-southeast-2.amazonaws.com}/myprojects/corvian:web-${TAG:-latest}
@@ -174,8 +156,6 @@ services:
     depends_on:
       redis-a:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
 
 # ------------------------------------------------------------
 # Networks and persistent volumes

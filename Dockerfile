@@ -49,7 +49,7 @@ COPY packages/typescript-config/package.json packages/typescript-config/
 COPY packages/ui/package.json packages/ui/
 
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci  --no-audit --no-fund
+    npm ci --no-audit --no-fund
 
 # ------------------------------------------------------------
 # Bundle Node services with esbuild
@@ -88,8 +88,7 @@ RUN set -eu; \
     a="$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')"; \
     v="$(node -p "require('next/package.json').version")"; \
     npm install --no-save --ignore-scripts --no-audit --no-fund \
-      "@next/swc-linux-${a}-musl@${v}" 
-
+      "@next/swc-linux-${a}-musl@${v}"
 
 # Build Next.js
 RUN DATABASE_URL=postgresql://build:build@localhost:5432/build \
@@ -157,13 +156,3 @@ COPY --from=build-web /app/apps/web/public ./apps/web/public
 EXPOSE 3000
 
 CMD ["node", "apps/web/server.js"]
-
-# ============================================================
-# Runtime: Database migrations
-# ============================================================
-FROM deps AS migrate
-
-COPY packages/database packages/database
-COPY packages/database/prisma packages/database/prisma
-
-CMD ["npm", "run", "db:migrate", "--workspace=@corvian/database"]
